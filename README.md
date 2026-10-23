@@ -17,8 +17,7 @@
 
 HindiMitra (*mitra* = friend) is a Flutter app that teaches the Devanagari script through guided letter
 tracing, quizzes, flashcards, story reading and games. It is a Flutter port of the React Native (Expo) app
-*Hindi Sikho* and keeps the same "Little Hindi" design: cream `#FCF9EE`, marigold `#EE9A4C`, violet `#6E4EDF`,
-solid offset "toy" shadows, and Baloo 2 / Nunito / Tiro Devanagari Hindi fonts. There are five tabs:
+*Hindi Sikho* and keeps the same "Little Hindi"  There are five tabs:
 Home · Write · Read · Rewards · Profile.
 
 ## Features
