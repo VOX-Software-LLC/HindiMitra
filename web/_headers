@@ -1,0 +1,50 @@
+# Cloudflare Pages response headers.
+#
+# Applies per-path globs:
+#   /*               — defaults for every response
+#   /assets/*        — long-term immutable cache for hashed assets
+#   /index.html      — never cache (always fresh routing entry point)
+#   /_expo/*         — Expo / Metro chunk output; safe to cache long
+#
+# Tighten the CSP after you confirm exactly which domains the app
+# fetches at runtime (Firebase, Stripe, PostHog, Sentry). The values
+# below are a sensible starting set for a Firebase + Stripe + PostHog
+# + Sentry stack.
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/_expo/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.woff2
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.png
+  Cache-Control: public, max-age=2592000
+
+/*.svg
+  Cache-Control: public, max-age=2592000
+
+# Flutter web build output
+/flutter_service_worker.js
+  Cache-Control: no-cache
+
+/main.dart.js
+  Cache-Control: public, max-age=31536000, immutable

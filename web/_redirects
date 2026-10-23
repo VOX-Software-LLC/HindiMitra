@@ -1,0 +1,14 @@
+# Cloudflare Pages SPA fallback.
+#
+# HindiMitra is a single-page app — React Navigation handles every
+# route on the client. Without this redirect, hitting a deep link
+# (e.g., https://hindimitra.app/teacher/dashboard) would 404 because
+# the Pages CDN looks for a literal file at that path.
+#
+# Format: <from>  <to>  <status>
+# /*  /index.html  200    →  serve index.html for every URL with a
+#                            200 (not a redirect), so the URL stays the
+#                            same and React Navigation picks up the
+#                            route from window.location.
+
+/*    /index.html    200

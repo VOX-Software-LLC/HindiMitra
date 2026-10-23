@@ -1,0 +1,15 @@
+analyzer:
+  errors:
+    # was listed under linter.rules, where it is not a lint and had no effect
+    deprecated_member_use: ignore
+  exclude:
+    - build/**
+    - web/**
+    - android/**
+    - ios/**
+include: package:flutter_lints/flutter.yaml
+linter:
+  rules:
+    prefer_const_constructors: false
+    prefer_const_literals_to_create_immutables: false
+    avoid_print: false

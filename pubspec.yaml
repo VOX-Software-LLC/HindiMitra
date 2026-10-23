@@ -1,0 +1,43 @@
+name: hindi_mitra
+description: HindiMitra - learn to read and write Hindi (Devanagari).
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.2
+  shared_preferences: ^2.2.3
+  google_fonts: ^6.2.1
+  audioplayers: ^6.0.0
+  flutter_tts: ^4.0.2
+  intl: ^0.19.0
+  url_launcher: ^6.3.0
+  flutter_local_notifications: ^17.2.4
+  timezone: ^0.9.4
+  speech_to_text: ^7.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/data/
+    - assets/audio/
+    - assets/images/
+    - assets/google_fonts/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/icon.png"
+  adaptive_icon_background: "#FCF3E2"
+  adaptive_icon_foreground: "assets/images/adaptive-icon.png"
+  remove_alpha_ios: true
