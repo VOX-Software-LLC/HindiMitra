@@ -13,7 +13,7 @@ class HeaderBar extends StatelessWidget {
   const HeaderBar({super.key, required this.title, this.subtitle, this.onBack, this.rightAction});
   @override
   Widget build(BuildContext context) => Container(
-        color: AppColors.background,
+        color: Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: Sp.md, vertical: Sp.sm),
         child: Row(children: [
           SizedBox(width: 44, child: Align(alignment: Alignment.centerLeft,
@@ -21,7 +21,7 @@ class HeaderBar extends StatelessWidget {
                   ? Pressable(onTap: onBack, child: Container(width: 42, height: 42,
                       decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(14),
                           border: Border.all(color: AppColors.border), boxShadow: toyShadow(AppColors.toyShadowColor, 2)),
-                      child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppColors.textPrimary)))
+                      child: Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppColors.textPrimary)))
                   : const SizedBox(width: 40))),
           Expanded(child: Column(children: [
             Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Fonts.display(20, height: 1.15)),
@@ -224,9 +224,10 @@ class ToyCard extends StatelessWidget {
 
 /// Rounded pill button, optionally filled with toy shadow.
 class PillButton extends StatelessWidget {
-  final String label; final IconData? icon; final VoidCallback? onTap; final bool filled; final Color color; final Color? shadowColor;
+  final String label; final IconData? icon; final VoidCallback? onTap; final bool filled; final Color? _color; final Color? shadowColor;
+  Color get color => _color ?? AppColors.primary;
   const PillButton({super.key, required this.label, this.icon, this.onTap, this.filled = false,
-      this.color = AppColors.primary, this.shadowColor});
+      Color? color, this.shadowColor}) : _color = color;
   @override
   Widget build(BuildContext context) {
     final fg = filled ? AppColors.textOnPrimary : color;
@@ -253,8 +254,9 @@ class PillButton extends StatelessWidget {
 
 /// Small soft-tinted pill with an icon + text ("Hear" buttons).
 class SoftPill extends StatelessWidget {
-  final IconData? icon; final String? label; final VoidCallback? onTap; final Color color; final double size;
-  const SoftPill({super.key, this.icon, this.label, this.onTap, this.color = AppColors.primary, this.size = 16});
+  final IconData? icon; final String? label; final VoidCallback? onTap; final Color? _color; final double size;
+  Color get color => _color ?? AppColors.primary;
+  const SoftPill({super.key, this.icon, this.label, this.onTap, Color? color, this.size = 16}) : _color = color;
   @override
   Widget build(BuildContext context) => Pressable(
         onTap: onTap,
@@ -265,7 +267,8 @@ class SoftPill extends StatelessWidget {
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             if (icon != null) Icon(icon, size: size, color: color),
             if (icon != null && label != null) const SizedBox(width: 4),
-            if (label != null) Text(label!, style: Fonts.body(12, w: FontWeight.w700, color: color)),
+            if (label != null) Flexible(child: Text(label!, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: Fonts.body(12, w: FontWeight.w700, color: color))),
           ]),
         ),
       );
@@ -404,9 +407,10 @@ class SessionCompleteCard extends StatelessWidget {
 
 /// Rounded pill used for result actions (filled = primary, outline = secondary).
 class ResultButton extends StatelessWidget {
-  final String label; final IconData icon; final bool filled; final VoidCallback? onTap; final Color color;
+  final String label; final IconData icon; final bool filled; final VoidCallback? onTap; final Color? _color;
+  Color get color => _color ?? AppColors.primary;
   const ResultButton({super.key, required this.label, required this.icon, this.filled = true, this.onTap,
-      this.color = AppColors.primary});
+      Color? color}) : _color = color;
   @override
   Widget build(BuildContext context) => Opacity(
         opacity: onTap == null ? 0.45 : 1,
@@ -436,38 +440,146 @@ class ResultButton extends StatelessWidget {
       );
 }
 
+/// Points each criterion adds to the final score (score × weight × 100),
+/// rounded so they sum exactly to [weightedAverage] (largest remainder).
+List<int> criterionPoints(List<Criterion> cs) {
+  final exact = [for (final c in cs) c.score.clampD(0.0, 1.0) * c.weight * 100];
+  final out = [for (final e in exact) e.floor()];
+  final target = weightedAverage(cs);
+  final order = List.generate(cs.length, (i) => i)..sort((a, b) => (exact[b] - out[b]).compareTo(exact[a] - out[a]));
+  var missing = target - out.fold<int>(0, (a, b) => a + b);
+  for (final i in order) {
+    if (missing <= 0) break;
+    out[i]++;
+    missing--;
+  }
+  return out;
+}
+
 /// Per-attempt breakdown of the grade, so the child sees *why* they got their
-/// stars (shape, coverage, neatness, direction, proportion) — not one number.
+/// score: every criterion with its percentage and, in the detailed style, how
+/// many of the 100 points it earned, then any adjustment, then the total.
+/// The numbers always add up to the score shown on the card.
 class ScoreBreakdown extends StatelessWidget {
   final EvaluationResult r;
-  const ScoreBreakdown(this.r, {super.key});
+  /// Compact: a row of chips instead of bars and the points column.
+  final bool compact;
+  const ScoreBreakdown(this.r, {super.key, this.compact = false});
+
+  static Color _tone(double v) => v >= 0.8 ? AppColors.success : v >= 0.6 ? AppColors.warning : AppColors.error;
+
   @override
   Widget build(BuildContext context) {
-    final rows = [
-      ('Shape', r.shapeScore), ('All parts drawn', r.coverageScore), ('No extra lines', r.precisionScore),
-      ('Direction & order', r.directionScore), ('Proportion', r.proportionScore),
-    ];
-    return Column(children: [
-      for (final (label, v) in rows) Padding(
+    final cs = r.criteria;
+    if (compact) {
+      return Wrap(alignment: WrapAlignment.center, spacing: 6, runSpacing: 6, children: [
+        for (final c in cs) Container(
+          padding: const EdgeInsets.symmetric(horizontal: Sp.sm, vertical: 4),
+          decoration: BoxDecoration(color: _tone(c.score).withOpacity(0.12), borderRadius: BorderRadius.circular(9999)),
+          child: Text('${c.label} ${c.percent}%', style: Fonts.body(12, w: FontWeight.w800, color: AppColors.textPrimary)),
+        ),
+        for (final a in r.adjustments) Text('${a.reason} (${a.points > 0 ? '+' : '−'}${a.points.abs()})',
+            style: Fonts.body(12, w: FontWeight.w700, color: AppColors.textSecondary)),
+      ]);
+    }
+    final pts = criterionPoints(cs);
+    final small = Fonts.body(11, w: FontWeight.w700, color: AppColors.textMuted);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        Expanded(child: Text('How your score adds up', style: Fonts.body(13, w: FontWeight.w800))),
+        SizedBox(width: 64, child: Text('points', textAlign: TextAlign.right, style: small)),
+      ]),
+      const SizedBox(height: 4),
+      for (int i = 0; i < cs.length; i++) Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(children: [
-          SizedBox(width: 118, child: Text(label, style: Fonts.body(12, w: FontWeight.w700, color: AppColors.textSecondary))),
+          SizedBox(width: 112, child: Text(cs[i].label, style: Fonts.body(12, w: FontWeight.w700, color: AppColors.textSecondary))),
           Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(9999), child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: v.clampD(0.0, 1.0)), duration: const Duration(milliseconds: 700), curve: Curves.easeOutCubic,
-            builder: (_, x, __) => LinearProgressIndicator(value: x, minHeight: 8, backgroundColor: AppColors.muted,
-                color: x >= 0.8 ? AppColors.success : x >= 0.6 ? AppColors.warning : AppColors.error),
+            tween: Tween(begin: 0, end: cs[i].score.clampD(0.0, 1.0)), duration: const Duration(milliseconds: 700),
+            curve: Curves.easeOutCubic,
+            builder: (_, x, __) => LinearProgressIndicator(value: x, minHeight: 8, backgroundColor: AppColors.muted, color: _tone(x)),
           ))),
-          SizedBox(width: 42, child: Text('${(v * 100).round()}%', textAlign: TextAlign.right,
+          SizedBox(width: 40, child: Text('${cs[i].percent}%', textAlign: TextAlign.right,
               style: Fonts.body(12, w: FontWeight.w800, color: AppColors.textPrimary))),
+          SizedBox(width: 64, child: Text('${pts[i]}/${(cs[i].weight * 100).round()}', textAlign: TextAlign.right, style: small)),
         ]),
       ),
-      if (r.strokeCountPenalty > 0) Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Text('Wrong number of strokes (−${(r.strokeCountPenalty * 60).round()} pts)',
-            style: Fonts.body(12, w: FontWeight.w700, color: AppColors.error)),
+      for (final a in r.adjustments) Padding(
+        padding: const EdgeInsets.only(top: 3),
+        child: Row(children: [
+          Icon(a.points >= 0 ? Icons.add_circle_outline : Icons.remove_circle_outline, size: 14, color: AppColors.textSecondary),
+          const SizedBox(width: 4),
+          Expanded(child: Text(a.reason, style: Fonts.body(12, w: FontWeight.w700, color: AppColors.textSecondary))),
+          SizedBox(width: 64, child: Text('${a.points >= 0 ? '+' : '−'}${a.points.abs()}', textAlign: TextAlign.right,
+              style: Fonts.body(12, w: FontWeight.w800, color: AppColors.textSecondary))),
+        ]),
       ),
+      Divider(height: 12, color: AppColors.border),
+      Row(children: [
+        Expanded(child: Text('Accuracy', style: Fonts.body(13, w: FontWeight.w800))),
+        Text('${r.accuracy}%', style: Fonts.body(13, w: FontWeight.w800, color: AppColors.primaryDark)),
+      ]),
     ]);
   }
+}
+
+/// Shown under a result below [kTipsThreshold]: why the score is what it is,
+/// up to three concrete fixes (biggest point loss first), and buttons to try
+/// again straight away or look at the model.
+class ImprovementPanel extends StatelessWidget {
+  final List<ImprovementTip> tips;
+  final VoidCallback? onRetry, onShowModel;
+  /// A small picture of the model letter (stroke colours match the tips).
+  final Widget? reference;
+  const ImprovementPanel({super.key, required this.tips, this.onRetry, this.onShowModel, this.reference});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(Sp.md),
+        decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.07), borderRadius: BorderRadius.circular(Rad.lg),
+            border: Border.all(color: AppColors.primary.withOpacity(0.25))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(Icons.auto_awesome, size: 18, color: AppColors.primary),
+            const SizedBox(width: Sp.xs),
+            Expanded(child: Text("You're close — here's how to make it clearer",
+                style: Fonts.body(14, w: FontWeight.w800, color: AppColors.primaryDark))),
+            if (reference != null) Container(
+              width: 64, height: 64, margin: const EdgeInsets.only(left: Sp.sm),
+              decoration: BoxDecoration(color: AppColors.canvasBackground, borderRadius: BorderRadius.circular(Rad.md),
+                  border: Border.all(color: AppColors.border)),
+              clipBehavior: Clip.antiAlias,
+              child: reference,
+            ),
+          ]),
+          const SizedBox(height: Sp.sm),
+          if (tips.isEmpty)
+            Text('Write it slowly once more, following the model.', style: Fonts.body(13, color: AppColors.textSecondary)),
+          for (int i = 0; i < tips.length; i++) Padding(
+            padding: const EdgeInsets.only(bottom: Sp.sm),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: 22, height: 22, alignment: Alignment.center,
+                decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                child: Text('${i + 1}', style: Fonts.body(12, w: FontWeight.w800, color: AppColors.textOnPrimary)),
+              ),
+              const SizedBox(width: Sp.sm),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(tips[i].title, style: Fonts.body(13.5, w: FontWeight.w800)),
+                Text(tips[i].detail, style: Fonts.body(13, color: AppColors.textSecondary, height: 1.35)),
+                Text('${tips[i].criterion} · cost ${tips[i].pointsLost} points',
+                    style: Fonts.body(11, w: FontWeight.w700, color: AppColors.textMuted)),
+              ])),
+            ]),
+          ),
+          if (onRetry != null || onShowModel != null) Row(children: [
+            if (onShowModel != null) Expanded(child: ResultButton(label: 'Show model', icon: Icons.visibility_outlined,
+                filled: false, onTap: onShowModel)),
+            if (onShowModel != null && onRetry != null) const SizedBox(width: Sp.sm),
+            if (onRetry != null) Expanded(child: ResultButton(label: 'Try again', icon: Icons.refresh, onTap: onRetry)),
+          ]),
+        ]),
+      );
 }
 
 /// Live 0-100 % accuracy meter shown under the drawing canvas, with the stars

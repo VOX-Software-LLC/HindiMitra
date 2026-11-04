@@ -205,7 +205,7 @@ class _LetterComparisonScreenState extends State<LetterComparisonScreen> {
   @override
   Widget build(BuildContext context) {
     canvasSize = (MediaQuery.of(context).size.width - Sp.md * 2).clampD(200.0, 320.0);
-    Widget scaffold(Widget body) => Scaffold(backgroundColor: AppColors.background, body: SafeArea(bottom: false, child: body));
+    Widget scaffold(Widget body) => Scaffold(backgroundColor: Colors.transparent, body: SafeArea(bottom: false, child: body));
     if (sessionComplete) {
       final st = accuracy >= 80 ? 3 : accuracy >= 60 ? 2 : accuracy >= 40 ? 1 : 0;
       return scaffold(Column(children: [
@@ -286,7 +286,7 @@ class _LetterComparisonScreenState extends State<LetterComparisonScreen> {
             width: double.infinity, padding: const EdgeInsets.all(Sp.md),
             color: AppColors.primary.withOpacity(0.1),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Icon(Icons.lightbulb, size: 20, color: AppColors.primaryDark), const SizedBox(width: Sp.sm),
+              Icon(Icons.lightbulb, size: 20, color: AppColors.primaryDark), const SizedBox(width: Sp.sm),
               Expanded(child: Text(d.summary, style: Fonts.body(15, w: FontWeight.w700, color: AppColors.textPrimary, height: 1.35))),
             ]),
           ),

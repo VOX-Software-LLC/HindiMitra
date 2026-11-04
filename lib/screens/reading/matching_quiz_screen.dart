@@ -19,7 +19,7 @@ class _Accent {
 }
 
 final _accents = [
-  const _Accent(AppColors.primary, Color(0xFFB57140)),
+  _Accent(AppColors.primary, Color(0xFFB57140)),
   _Accent(Palette.light.purple, const Color(0xFF4A32A6)),
   _Accent(Palette.light.green, const Color(0xFF2E9163)),
   _Accent(Palette.light.sky, const Color(0xFF2E7FAB)),

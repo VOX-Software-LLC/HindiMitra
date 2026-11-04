@@ -110,8 +110,8 @@ class _LetterPairsQuizScreenState extends State<LetterPairsQuizScreen> {
                 boxShadow: toyShadow(AppColors.primaryDark, 6)),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               playing
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textOnPrimary))
-                  : const Icon(Icons.volume_up, size: 24, color: AppColors.textOnPrimary),
+                  ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textOnPrimary))
+                  : Icon(Icons.volume_up, size: 24, color: AppColors.textOnPrimary),
               const SizedBox(width: Sp.md),
               Text(playing ? 'Playing...' : 'Tap to Hear', style: Fonts.body(16, w: FontWeight.w800, color: AppColors.textOnPrimary)),
             ]),
@@ -142,8 +142,9 @@ class _LetterPairsQuizScreenState extends State<LetterPairsQuizScreen> {
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text(q.pair[idx], style: Fonts.hindi(48, color: text, height: 140 / 120 * 1.0)),
           const SizedBox(width: Sp.md),
-          Text(q.hints[idx], style: Fonts.body(12, w: FontWeight.w500, color: text).copyWith(fontStyle: FontStyle.italic)),
-          const Spacer(),
+          // Wraps on narrow phones instead of overflowing the card.
+          Expanded(child: Text(q.hints[idx],
+              style: Fonts.body(12, w: FontWeight.w500, color: text).copyWith(fontStyle: FontStyle.italic))),
           if (selected == idx) Icon(isCorrect == true ? Icons.check_circle : Icons.cancel, size: 24,
               color: isCorrect == true ? AppColors.success : AppColors.error),
         ]),

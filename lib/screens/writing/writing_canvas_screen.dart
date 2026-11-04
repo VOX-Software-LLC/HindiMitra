@@ -14,13 +14,40 @@ import '../../widgets/stroke_guide.dart';
 import '../../util/num_ext.dart';
 import '../../services/crash_reporter.dart';
 
-const _stageNames = {1: 'Guided Tracing', 2: 'Faded Ghost', 3: 'Freehand + Reference', 4: 'From Memory'};
 const _hintsPerLevel = 3;
+/// Good writes (2+ stars) needed to master a letter: 3 per stage for stages
+/// 1-3, then one from memory in stage 4.
+const kWritesToMaster = 10;
+
+/// Good writes so far, read from the stage progress the store already keeps.
+int goodWrites(LetterProgress? p) {
+  if (p == null) return 0;
+  if (p.mastered) return kWritesToMaster;
+  return ((p.currentStage - 1) * 3 + p.successfulAttempts).clamp(0, kWritesToMaster);
+}
+
+/// How strong the tracing guide is (1 = full, 0 = gone). It gets lighter after
+/// every good write and is gone by write 10, which is written from memory.
+double guideStrength(int writes) => (1 - writes / (kWritesToMaster - 1)).clamp(0.0, 1.0);
 /// Writing "From Memory" (stage 4) is harder, so it earns a small accuracy bonus.
 const _memoryBonus = 10;
 /// Profile "Difficulty" shifts the accuracy score: Easy +10, Hard -10.
 int _bonusFor(int stage, String difficulty) =>
     (stage == 4 ? _memoryBonus : 0) + (difficulty == 'easy' ? 10 : difficulty == 'hard' ? -10 : 0);
+
+/// [r] with the stage and difficulty bonuses applied as labelled adjustments,
+/// so the result card shows exactly how the final accuracy was reached.
+EvaluationResult _withBonuses(EvaluationResult r, int stage, String difficulty) {
+  var out = r;
+  void add(String reason, int pts) {
+    final next = (out.accuracy + pts).clamp(0, 100);
+    if (next != out.accuracy) out = out.adjusted(next, ScoreAdjustment(reason, next - out.accuracy));
+  }
+  if (stage == 4) add('Written from memory', _memoryBonus);
+  if (difficulty == 'easy') add('Easy mode', 10);
+  if (difficulty == 'hard') add('Hard mode', -10);
+  return out;
+}
 
 class WritingCanvasScreen extends StatefulWidget {
   final Map<String, dynamic> params;
@@ -35,7 +62,11 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
   final draw = DrawController();
   bool attemptComplete = false, showConfetti = false, stageAdvanced = false, showDemo = false;
   bool _grading = false, levelComplete = false;
-  int earnedStars = 0, earnedAccuracy = 0;
+  int earnedStars = 0, earnedAccuracy = 0, earnedPoints = 0;
+  /// Shown with the result: the attempt's score with every adjustment applied.
+  EvaluationResult? shownDetail;
+  /// Whether this attempt was traced over a visible guide (vs written alone).
+  bool tracedThisAttempt = false;
   String evalFeedback = '';
   String? tip;
   GradedResult? lastGraded;
@@ -44,6 +75,9 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
   int hintsLeft = _hintsPerLevel;
   /// Best accuracy reached on each letter of the level (index -> %).
   final Map<int, int> _levelBest = {};
+  /// Score of the previous attempt on each letter, so feedback can say
+  /// whether this one was better or worse.
+  final Map<String, int> _lastAcc = {};
   DateTime _attemptStart = DateTime.now();
   late final AnimationController demo;
   late final AnimationController hint;
@@ -94,7 +128,8 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
     hint.stop();
     _attemptStart = DateTime.now();
     setState(() {
-      attemptComplete = false; earnedStars = 0; earnedAccuracy = 0; evalFeedback = ''; tip = null; lastGraded = null;
+      attemptComplete = false; earnedStars = 0; earnedAccuracy = 0; earnedPoints = 0; evalFeedback = ''; tip = null;
+      lastGraded = null; shownDetail = null;
       showConfetti = false; stageAdvanced = false; showHint = false; hintUsedThisAttempt = false;
     });
   }
@@ -111,7 +146,7 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
     final store = context.read<AppStore>();
     GradedResult result;
     try {
-      result = await gradeWriting(draw.strokes, letterId, canvasSize);
+      result = await gradeWriting(draw.strokes, letterId, canvasSize, previousAccuracy: _lastAcc[letterId]);
     } catch (e, st) {
       CrashReporter.record(e, st, reason: 'gradeWriting($letterId)');
       _grading = false;
@@ -122,9 +157,11 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
     }
     _grading = false;
     if (!mounted) return;
+    _lastAcc[letterId] = result.accuracy;
     final prog = store.letterProgress[letterId];
     final stageBefore = prog?.currentStage ?? 1;
-    final accuracy = (result.accuracy + _bonusFor(stageBefore, store.difficulty)).clamp(0, 100);
+    final detail = result.detail == null ? null : _withBonuses(result.detail!, stageBefore, store.difficulty);
+    final accuracy = detail?.accuracy ?? (result.accuracy + _bonusFor(stageBefore, store.difficulty)).clamp(0, 100);
     var stars = starsForAccuracy(accuracy);
     // Using a hint on this attempt caps it at 2 stars.
     if (hintUsedThisAttempt && stars > 2) stars = 2;
@@ -135,11 +172,16 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
     hint.stop();
     setState(() {
       earnedStars = stars; earnedAccuracy = accuracy; evalFeedback = result.feedback; tip = result.actionableTip;
-      lastGraded = result; attemptComplete = true; showHint = false;
+      // Same rule as AppStore.recordAttempt: stars × 10 × stage, only when earned.
+      earnedPoints = stars * 10 * stageBefore;
+      lastGraded = result; shownDetail = detail; attemptComplete = true;
+      tracedThisAttempt = showHint || _guideFor(prog) > 0;
+      showHint = false;
       if (accuracy > (_levelBest[idx] ?? -1)) _levelBest[idx] = accuracy;
     });
     final secs = DateTime.now().difference(_attemptStart).inSeconds.clamp(1, 180);
-    store.recordAttempt(letterId, stars, accuracy: accuracy, practicedSeconds: secs);
+    store.recordAttempt(letterId, stars, accuracy: accuracy, practicedSeconds: secs,
+        strokes: normalizeStrokes(draw.strokes, canvasSize));
     if (willAdvance) {
       setState(() { stageAdvanced = true; showConfetti = true; });
       hapticSuccess();
@@ -147,6 +189,11 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
       hapticMedium();
     }
   }
+
+  /// Tracing guide strength for this letter: fades with good writes in
+  /// guided mode, and is off in independent mode.
+  double _guideFor(LetterProgress? p) =>
+      context.read<AppStore>().writingMode == 'independent' ? 0 : guideStrength(goodWrites(p));
 
   void _watchDemo() {
     setState(() => showDemo = true);
@@ -220,17 +267,20 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
     if (letter == null) return const Scaffold(body: SafeArea(child: Center(child: Text('Letter not found'))));
     final progress = store.letterProgress[letterId];
     final stage = progress?.currentStage ?? 1;
-    final attempts = progress?.attemptsInCurrentStage ?? 0;
+    final writes = goodWrites(progress);
+    final guide = _guideFor(progress);
+    final board = context.select<AppStore, String>((s) => s.boardStyle);
+    final independent = context.select<AppStore, bool>((s) => s.writingMode == 'independent');
     final w = MediaQuery.of(context).size.width;
     canvasSize = (w - Sp.md * 2).clampD(200.0, 400.0);
     final levelName = (widget.params['levelName'] as String?) ?? '';
     final leftHanded = context.select<AppStore, bool>((s) => s.leftHanded);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
-        child: Stack(children: [
+        child: Stack(fit: StackFit.expand, children: [
           SingleChildScrollView(
             child: Center(
               child: ConstrainedBox(
@@ -239,40 +289,33 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
                   HeaderBar(
                     title: isLevelMode && levelName.isNotEmpty ? '${letter.character} — $levelName' : '${letter.character} — ${letter.romanized}',
                     subtitle: isLevelMode
-                        ? 'Letter ${idx + 1} of ${allIds.length} · Stage $stage'
-                        : 'Stage $stage: ${_stageNames[stage]}',
+                        ? 'Letter ${idx + 1} of ${allIds.length} · Write $writes/$kWritesToMaster'
+                        : independent ? 'Independent writing' : guide > 0 ? 'Trace it · guide ${(guide * 100).round()}%' : 'From memory',
                     onBack: () => Navigator.of(context).maybePop(),
                     rightAction: Container(
                       padding: const EdgeInsets.symmetric(horizontal: Sp.sm, vertical: Sp.xs),
                       decoration: BoxDecoration(color: AppColors.secondary, borderRadius: BorderRadius.circular(12)),
-                      child: Text(isLevelMode ? '${idx + 1}/${allIds.length}' : '$attempts/3',
+                      child: Text(isLevelMode ? '${idx + 1}/${allIds.length}' : '$writes/$kWritesToMaster',
                           style: Fonts.body(12, w: FontWeight.w700)),
                     ),
                   ),
                   if (isLevelMode) _levelProgress(),
-                  // Stage pills
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: Sp.sm),
-                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      for (int s = 1; s <= 4; s++) ...[
-                        if (s > 1) const SizedBox(width: Sp.sm),
-                        _stagePill(s, stage, progress?.mastered == true && s == 4),
-                      ],
-                    ]),
-                  ),
+                  _FadeMeter(writes: writes, guide: guide, independent: independent),
                   const SizedBox(height: Sp.sm),
                   DrawCanvas(
-                    controller: draw, size: canvasSize,
+                    controller: draw, size: canvasSize, board: board,
                     overlays: [
-                      if (stage == 1 || stage == 2)
-                        Positioned.fill(child: IgnorePointer(child: Center(child: Opacity(
-                          opacity: stage == 1 ? 0.28 : 0.12,
-                          child: Text(letter.character, style: Fonts.hindi(canvasSize * 0.6).copyWith(fontWeight: FontWeight.w900)))))),
+                      // The tracing guide (stencil + numbered coloured strokes) fades a
+                      // step after every good write.
+                      if (guide > 0 && !showHint)
+                        Positioned.fill(child: IgnorePointer(child: AnimatedOpacity(
+                          opacity: guide, duration: const Duration(milliseconds: 700), curve: Curves.easeOut,
+                          child: StrokeOrderGuide(character: letter.character, showNumbers: writes < 4)))),
                       if (showHint)
                         Positioned.fill(child: IgnorePointer(child: AnimatedStrokeGuide(character: letter.character))),
                     ],
                     topOverlays: [
-                      if (stage <= 3)
+                      if (guide > 0)
                         Positioned(top: Sp.sm, left: Sp.sm, child: IgnorePointer(child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: Sp.sm, vertical: 4),
                           decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(Rad.sm)),
@@ -283,7 +326,8 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
                                 style: Fonts.body(12, w: FontWeight.w600, color: Colors.white)),
                           ]),
                         ))),
-                      if (stage == 3)
+                      // A small model to look at (not trace) when the guide is faint or off.
+                      if ((guide > 0 && guide < 0.45) || (independent && stage < 4))
                         Positioned(top: Sp.sm, right: Sp.sm, child: Container(
                           padding: const EdgeInsets.all(Sp.xs),
                           decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(Rad.sm),
@@ -297,7 +341,7 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
                             decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08),
                                 borderRadius: BorderRadius.circular(Rad.sm), border: Border.all(color: AppColors.primary)),
                             child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              const Icon(Icons.volume_up, size: 18, color: AppColors.primary),
+                              Icon(Icons.volume_up, size: 18, color: AppColors.primary),
                               const SizedBox(width: Sp.xs),
                               Text('Tap to listen again', style: Fonts.body(12, w: FontWeight.w600, color: AppColors.primary)),
                             ]),
@@ -341,8 +385,8 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
                       GestureDetector(
                         onTap: () => speakLetterWithGuide(letter.character, letter.pronunciation, letter.exampleWord),
                         child: Container(width: 44, height: 44,
-                            decoration: const BoxDecoration(color: AppColors.background, shape: BoxShape.circle),
-                            child: const Icon(Icons.volume_up, size: 24, color: AppColors.primary)),
+                            decoration: BoxDecoration(color: AppColors.background, shape: BoxShape.circle),
+                            child: Icon(Icons.volume_up, size: 24, color: AppColors.primary)),
                       ),
                       const SizedBox(width: Sp.md),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -363,25 +407,6 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
           Positioned.fill(child: Confetti(visible: showConfetti, onComplete: () => setState(() => showConfetti = false))),
         ]),
       ),
-    );
-  }
-
-  Widget _stagePill(int s, int current, bool masteredCell) {
-    final isPast = s < current;
-    final isCurrent = s == current && !masteredCell;
-    final done = isPast || masteredCell;
-    return Container(
-      constraints: const BoxConstraints(minWidth: 40), height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: Sp.md),
-      decoration: BoxDecoration(
-        color: done ? AppColors.success : isCurrent ? AppColors.primary : AppColors.surface,
-        borderRadius: BorderRadius.circular(9999),
-        border: Border.all(color: done ? AppColors.success : isCurrent ? AppColors.primary : AppColors.border),
-        boxShadow: isCurrent ? toyShadow(AppColors.primaryDark, 4) : null),
-      child: Center(child: masteredCell
-          ? const Icon(Icons.check, size: 18, color: Colors.white)
-          : Text('$s', style: Fonts.body(14, w: FontWeight.w800,
-              color: (isCurrent || isPast) ? Colors.white : AppColors.textSecondary))),
     );
   }
 
@@ -418,87 +443,129 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
   Widget _resultOverlay(AppStore store, HindiLetter letter, LetterProgress? progress, int stage) {
     final mastered = progress?.mastered == true;
     final title = mastered ? 'Mastered! 🏆' : stageAdvanced ? 'Stage Complete!' : earnedStars >= 2 ? 'Great Job!' : 'Keep Trying!';
-    final msg = mastered
-        ? "You've fully mastered this letter!"
-        : stageAdvanced
-            ? "You've advanced to Stage ${(progress?.currentStage ?? 1).clampI(1, 4)}!"
-            : (evalFeedback.isNotEmpty ? evalFeedback : (earnedStars >= 2 ? 'Good work!' : 'Keep practicing!'));
+    final after = goodWrites(progress);
+    final left = kWritesToMaster - after;
+    final msg = mastered && stageAdvanced
+        ? "$evalFeedback You've mastered this letter — you can write it from memory!"
+        : evalFeedback;
+    final independent = store.writingMode == 'independent';
+    final fadeStatus = mastered
+        ? null
+        : earnedStars >= 2
+            ? (independent
+                ? '$left more good ${left == 1 ? 'write' : 'writes'} to master it'
+                : guideStrength(after) == 0
+                    ? 'Guide gone — write the next one from memory!'
+                    : 'Guide now ${(guideStrength(after) * 100).round()}% · $left more good ${left == 1 ? 'write' : 'writes'}')
+            : 'Score 70% (2 stars) to count this write';
+    final detail = shownDetail;
+    final compact = store.resultStyle == 'compact';
+    final needsHelp = earnedAccuracy < kTipsThreshold && !mastered;
+    final tips = needsHelp && detail != null
+        ? improvementTips(detail, letter.character, otherLetter: lastGraded?.detectedLetter)
+        : const <ImprovementTip>[];
+    // Short screens (landscape phones): smaller header so the score is visible
+    // without scrolling; the buttons are pinned below the scrolling body.
+    final short = MediaQuery.of(context).size.height < 640;
+    final body = Column(mainAxisSize: MainAxisSize.min, children: [
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: Sp.lg, vertical: Sp.sm),
+        decoration: BoxDecoration(gradient: toneGradient(AppColors.primary), borderRadius: BorderRadius.circular(9999),
+            boxShadow: toyShadow(AppColors.primaryDark, 6)),
+        child: Text(title, textAlign: TextAlign.center, style: Fonts.display(short ? 20 : 24, color: AppColors.textOnPrimary)),
+      ),
+      SizedBox(height: short ? Sp.sm : Sp.md),
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        StarRating(stars: earnedStars, size: short ? 30 : 40),
+        const SizedBox(width: Sp.md),
+        Text('$earnedAccuracy%', style: Fonts.display(short ? 24 : 28, color: AppColors.primaryDark)),
+      ]),
+      Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Wrap(alignment: WrapAlignment.center, spacing: Sp.sm, runSpacing: 4, children: [
+          _chip(tracedThisAttempt ? Icons.gesture_rounded : Icons.edit_rounded,
+              tracedThisAttempt ? 'Traced with guide' : 'Written on your own'),
+          if (hintUsedThisAttempt) _chip(Icons.lightbulb_outline, 'Hint used · max 2 stars'),
+          // Points only for an attempt that earned stars, with how they're worked out.
+          if (earnedPoints > 0) _chip(Icons.add_circle_outline, '+$earnedPoints points ($earnedStars ${earnedStars == 1 ? 'star' : 'stars'} × 10 × stage $stage)',
+              color: AppColors.successDark),
+        ]),
+      ),
+      const SizedBox(height: Sp.sm),
+      Text(msg, textAlign: TextAlign.center, style: Fonts.body(15, color: AppColors.textSecondary)),
+      if (fadeStatus != null)
+        Container(
+          margin: const EdgeInsets.only(top: Sp.sm),
+          padding: const EdgeInsets.symmetric(horizontal: Sp.md, vertical: 6),
+          decoration: BoxDecoration(
+              color: (earnedStars >= 2 ? AppColors.success : AppColors.textSecondary).withOpacity(0.10),
+              borderRadius: BorderRadius.circular(9999)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(earnedStars >= 2 ? Icons.gesture_rounded : Icons.replay_rounded, size: 16,
+                color: earnedStars >= 2 ? AppColors.successDark : AppColors.textSecondary),
+            const SizedBox(width: 6),
+            Flexible(child: Text(fadeStatus, style: Fonts.body(13, w: FontWeight.w700,
+                color: earnedStars >= 2 ? AppColors.successDark : AppColors.textSecondary))),
+          ]),
+        ),
+      if (needsHelp)
+        Padding(padding: const EdgeInsets.only(top: Sp.md), child: ImprovementPanel(
+          tips: tips,
+          reference: StrokeOrderGuide(character: letter.character, showNumbers: false),
+          onShowModel: () { _reset(); _watchDemo(); },
+        ))
+      else if (tip != null && !mastered)
+        Container(
+          margin: const EdgeInsets.only(top: Sp.md),
+          padding: const EdgeInsets.symmetric(horizontal: Sp.md, vertical: Sp.sm),
+          decoration: BoxDecoration(color: const Color(0x1FEE9A4C),
+              border: Border(left: BorderSide(color: AppColors.primary, width: 3)),
+              borderRadius: const BorderRadius.all(Radius.circular(Rad.md))),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(Icons.lightbulb_outline, size: 18, color: AppColors.primary),
+            const SizedBox(width: Sp.sm),
+            Expanded(child: Text(tip!, style: Fonts.body(14, height: 18 / 14))),
+          ]),
+        ),
+      if (detail != null)
+        Padding(padding: const EdgeInsets.only(top: Sp.md), child: ScoreBreakdown(detail, compact: compact)),
+    ]);
+    final actions = Row(children: [
+      Expanded(child: ResultButton(label: earnedStars < 3 ? 'Retry' : 'Try again', icon: Icons.refresh,
+          filled: earnedStars < 2, onTap: _reset)),
+      const SizedBox(width: Sp.sm),
+      Expanded(child: ResultButton(
+        label: isLevelMode
+            ? (idx < allIds.length - 1 ? 'Next (${idx + 2}/${allIds.length})' : 'Finish level')
+            : 'Next letter',
+        icon: isLevelMode && idx >= allIds.length - 1 ? Icons.emoji_events : Icons.arrow_forward,
+        filled: earnedStars >= 2, color: AppColors.primaryDark, onTap: _next,
+      )),
+    ]);
     return Positioned.fill(
       child: PopupBackdrop(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 360),
-          padding: const EdgeInsets.all(Sp.xl),
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: EdgeInsets.fromLTRB(Sp.lg, short ? Sp.md : Sp.lg, Sp.lg, Sp.md),
           decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(Rad.xl2),
               border: Border.all(color: AppColors.border), boxShadow: softShadow(AppColors.primary)),
-          child: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: Sp.lg, vertical: Sp.sm),
-                decoration: BoxDecoration(gradient: toneGradient(AppColors.primary), borderRadius: BorderRadius.circular(9999),
-                    boxShadow: toyShadow(AppColors.primaryDark, 6)),
-                child: Text(title, textAlign: TextAlign.center, style: Fonts.display(24, color: AppColors.textOnPrimary)),
-              ),
-              const SizedBox(height: Sp.md),
-              StarRating(stars: earnedStars, size: 48),
-              const SizedBox(height: Sp.sm),
-              Text('$earnedAccuracy% accuracy', style: Fonts.display(22, color: AppColors.primaryDark)),
-              if (hintUsedThisAttempt)
-                Text('Hint used · max 2 stars', style: Fonts.body(12, w: FontWeight.w600, color: AppColors.textMuted)),
-              const SizedBox(height: Sp.md),
-              Text(msg, textAlign: TextAlign.center, style: Fonts.body(16, color: AppColors.textSecondary)),
-              if (tip != null && !mastered && !stageAdvanced)
-                Container(
-                  margin: const EdgeInsets.only(top: Sp.md),
-                  padding: const EdgeInsets.symmetric(horizontal: Sp.md, vertical: Sp.sm),
-                  decoration: const BoxDecoration(color: Color(0x1FEE9A4C),
-                      border: Border(left: BorderSide(color: AppColors.primary, width: 3)),
-                      borderRadius: BorderRadius.all(Radius.circular(Rad.md))),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Icon(Icons.lightbulb_outline, size: 18, color: AppColors.primary),
-                    const SizedBox(width: Sp.sm),
-                    Expanded(child: Text(tip!, style: Fonts.body(14, height: 18 / 14))),
-                  ]),
-                ),
-              if (lastGraded?.detail != null)
-                Padding(padding: const EdgeInsets.only(top: Sp.md), child: ScoreBreakdown(lastGraded!.detail!)),
-              const SizedBox(height: Sp.sm),
-              Text('+${earnedStars * 10 * stage} points', style: Fonts.display(20, w: FontWeight.w700, color: AppColors.primary)),
-              const SizedBox(height: Sp.lg),
-              Row(children: [
-                Expanded(child: GestureDetector(
-                  onTap: _reset,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: Sp.sm),
-                    decoration: BoxDecoration(border: Border.all(color: AppColors.primary, width: 2),
-                        borderRadius: BorderRadius.circular(Rad.lg)),
-                    child: Center(child: Text(earnedStars < 3 ? 'Retry for 3 ★' : 'Try Again', textAlign: TextAlign.center,
-                        style: Fonts.body(16, w: FontWeight.w800, color: AppColors.primary))),
-                  ),
-                )),
-                const SizedBox(width: Sp.md),
-                Expanded(child: GestureDetector(
-                  onTap: _next,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: Sp.sm),
-                    decoration: BoxDecoration(color: AppColors.primaryDark, borderRadius: BorderRadius.circular(Rad.lg)),
-                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Flexible(child: Text(
-                        isLevelMode
-                            ? (idx < allIds.length - 1 ? 'Next (${idx + 2}/${allIds.length})' : 'Finish Level')
-                            : 'Next Letter',
-                        style: Fonts.body(16, w: FontWeight.w800, color: Colors.white))),
-                      const SizedBox(width: Sp.xs),
-                      Icon(isLevelMode && idx >= allIds.length - 1 ? Icons.emoji_events : Icons.arrow_forward, size: 18, color: Colors.white),
-                    ]),
-                  ),
-                )),
-              ]),
-            ]),
-          ),
+          // The details scroll; Retry / Next stay pinned at the bottom of the
+          // card, so the level can always be finished without scrolling.
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Flexible(child: SingleChildScrollView(child: body)),
+            const SizedBox(height: Sp.md),
+            actions,
+          ]),
         ),
       ),
     );
   }
+
+  Widget _chip(IconData icon, String label, {Color? color}) => Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 14, color: color ?? AppColors.textMuted),
+        const SizedBox(width: 3),
+        Flexible(child: Text(label, style: Fonts.body(12, w: FontWeight.w700, color: color ?? AppColors.textMuted))),
+      ]);
 
   Widget _levelProgress() {
     final done = idx + (attemptComplete ? 1 : 0);
@@ -567,9 +634,50 @@ class _WritingCanvasScreenState extends State<WritingCanvasScreen> with TickerPr
           const SizedBox(height: Sp.lg),
           btn('Back to Levels', Icons.grid_view, true, () => Navigator.of(context).maybePop()),
           const SizedBox(height: Sp.sm),
-          btn(stars < 3 ? 'Replay for 3 ★' : 'Replay', Icons.refresh, false, _replayLevel),
+          btn(stars < 3 ? 'Replay for 3 stars' : 'Replay', Icons.refresh, false, _replayLevel),
         ])),
       ),
     ));
+  }
+}
+
+/// Ten steps, one per good write: shows how far the guide has faded.
+class _FadeMeter extends StatelessWidget {
+  final int writes; final double guide; final bool independent;
+  const _FadeMeter({required this.writes, required this.guide, this.independent = false});
+  @override
+  Widget build(BuildContext context) {
+    final label = writes >= kWritesToMaster
+        ? 'Mastered — written from memory ✓'
+        : independent
+            ? 'Independent mode · no tracing guide'
+            : guide == 0
+            ? 'Last one: write it from memory!'
+            : 'Write it $kWritesToMaster times · the guide fades each time';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Sp.md, Sp.sm, Sp.md, Sp.xs),
+      child: Column(children: [
+        Row(children: [
+          for (int i = 0; i < kWritesToMaster; i++) ...[
+            if (i > 0) const SizedBox(width: 4),
+            Expanded(child: AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              height: 10,
+              decoration: BoxDecoration(
+                color: i < writes ? AppColors.success
+                    : i == writes ? AppColors.primary.withOpacity(0.35) : AppColors.border,
+                borderRadius: BorderRadius.circular(9999)),
+            )),
+          ],
+        ]),
+        const SizedBox(height: 6),
+        Row(children: [
+          Icon(guide > 0 ? Icons.gesture_rounded : Icons.psychology_alt_rounded, size: 16, color: AppColors.textSecondary),
+          const SizedBox(width: 6),
+          Expanded(child: Text(label, style: Fonts.body(12.5, w: FontWeight.w700, color: AppColors.textSecondary))),
+          Text('$writes/$kWritesToMaster', style: Fonts.body(12.5, w: FontWeight.w800, color: AppColors.primaryDark)),
+        ]),
+      ]),
+    );
   }
 }

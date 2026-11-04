@@ -113,7 +113,7 @@ class _SentenceBuildScreenState extends State<SentenceBuildScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: Sp.md, vertical: Sp.xs),
                   decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(9999)),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.volume_up_outlined, size: 16, color: AppColors.primary), const SizedBox(width: Sp.xs),
+                    Icon(Icons.volume_up_outlined, size: 16, color: AppColors.primary), const SizedBox(width: Sp.xs),
                     Text('Hear answer', style: Fonts.body(12, w: FontWeight.w700, color: AppColors.primary)),
                   ]),
                 ),
@@ -155,7 +155,7 @@ class _SentenceBuildScreenState extends State<SentenceBuildScreen> {
                 padding: const EdgeInsets.symmetric(vertical: Sp.md),
                 decoration: BoxDecoration(borderRadius: BorderRadius.circular(9999), border: Border.all(color: AppColors.primary, width: 2)),
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.refresh, size: 18, color: AppColors.primary), const SizedBox(width: Sp.xs),
+                  Icon(Icons.refresh, size: 18, color: AppColors.primary), const SizedBox(width: Sp.xs),
                   Text('Reset', style: Fonts.body(16, w: FontWeight.w800, color: AppColors.primary)),
                 ]),
               ),
@@ -169,7 +169,7 @@ class _SentenceBuildScreenState extends State<SentenceBuildScreen> {
                     boxShadow: toyShadow(AppColors.primaryDark, 6)),
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Text('Check', style: Fonts.body(16, w: FontWeight.w800, color: AppColors.textOnPrimary)), const SizedBox(width: Sp.sm),
-                  const Icon(Icons.arrow_forward, size: 18, color: AppColors.textOnPrimary),
+                  Icon(Icons.arrow_forward, size: 18, color: AppColors.textOnPrimary),
                 ]),
               ),
             )),
@@ -182,7 +182,7 @@ class _SentenceBuildScreenState extends State<SentenceBuildScreen> {
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Text(idx < total - 1 ? 'Next Sentence' : 'See Results', style: Fonts.body(16, w: FontWeight.w800, color: AppColors.textOnPrimary)),
                   const SizedBox(width: Sp.sm),
-                  const Icon(Icons.arrow_forward, size: 18, color: AppColors.textOnPrimary),
+                  Icon(Icons.arrow_forward, size: 18, color: AppColors.textOnPrimary),
                 ]),
               ),
             )),

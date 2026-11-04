@@ -120,14 +120,14 @@ class _SpeedChallengeScreenState extends State<SpeedChallengeScreen> {
   Widget build(BuildContext context) {
     size = (MediaQuery.of(context).size.width - Sp.md * 2).clampD(200.0, 350.0);
     if (queue.isEmpty && !complete) {
-      return Scaffold(backgroundColor: AppColors.background, body: SafeArea(child: Column(children: [
+      return Scaffold(backgroundColor: Colors.transparent, body: SafeArea(child: Column(children: [
         HeaderBar(title: 'Speed Challenge', onBack: () => Navigator.of(context).maybePop()),
         Expanded(child: Center(child: Text('Loading...', style: Fonts.display(20, w: FontWeight.w700, color: AppColors.textSecondary)))),
       ])));
     }
     final letter = queue.isEmpty ? null : AppData.letterById(queue[min(idx, queue.length - 1)]);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
         child: Stack(children: [
@@ -140,7 +140,7 @@ class _SpeedChallengeScreenState extends State<SpeedChallengeScreen> {
                 decoration: BoxDecoration(color: _timerColor, borderRadius: BorderRadius.circular(9999),
                     boxShadow: toyShadow(AppColors.toyShadowColor, 4)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.timer_outlined, size: 18, color: AppColors.textOnPrimary),
+                  Icon(Icons.timer_outlined, size: 18, color: AppColors.textOnPrimary),
                   const SizedBox(width: 4),
                   Text('${timeRemaining}s', maxLines: 1, softWrap: false,
                       style: Fonts.body(18, w: FontWeight.w800, color: AppColors.textOnPrimary)),
@@ -161,7 +161,7 @@ class _SpeedChallengeScreenState extends State<SpeedChallengeScreen> {
           decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(Rad.xl2),
               border: Border.all(color: AppColors.border), boxShadow: softShadow(AppColors.primary)),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.flash_on, size: 64, color: AppColors.primary),
+            Icon(Icons.flash_on, size: 64, color: AppColors.primary),
             const SizedBox(height: Sp.md),
             Text('Speed Challenge', style: Fonts.display(24)),
             const SizedBox(height: Sp.sm),
@@ -175,7 +175,7 @@ class _SpeedChallengeScreenState extends State<SpeedChallengeScreen> {
               ])),
             const SizedBox(height: Sp.sm),
             ToyButton(label: 'Start Challenge', size: ToySize.lg, fullWidth: true, onPressed: _start,
-                trailing: const Icon(Icons.arrow_forward, size: 20, color: AppColors.textOnPrimary)),
+                trailing: Icon(Icons.arrow_forward, size: 20, color: AppColors.textOnPrimary)),
           ]),
         ))));
 

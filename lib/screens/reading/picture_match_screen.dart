@@ -152,7 +152,7 @@ class _PictureMatchScreenState extends State<PictureMatchScreen> with SingleTick
             width: double.infinity, padding: const EdgeInsets.symmetric(vertical: Sp.md),
             decoration: BoxDecoration(gradient: toneGradient(AppColors.primary), borderRadius: BorderRadius.circular(9999), boxShadow: toyShadow(AppColors.primaryDark, 6)),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Icon(Icons.refresh, size: 22, color: AppColors.textOnPrimary), const SizedBox(width: Sp.sm),
+              Icon(Icons.refresh, size: 22, color: AppColors.textOnPrimary), const SizedBox(width: Sp.sm),
               Text('Play Again', style: Fonts.body(16, w: FontWeight.w800, color: AppColors.textOnPrimary)),
             ]),
           ),
@@ -164,7 +164,7 @@ class _PictureMatchScreenState extends State<PictureMatchScreen> with SingleTick
             width: double.infinity, padding: const EdgeInsets.symmetric(vertical: Sp.md),
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(9999), border: Border.all(color: AppColors.primary, width: 2)),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Icon(Icons.arrow_back, size: 22, color: AppColors.primary), const SizedBox(width: Sp.sm),
+              Icon(Icons.arrow_back, size: 22, color: AppColors.primary), const SizedBox(width: Sp.sm),
               Text('Exit', style: Fonts.body(16, w: FontWeight.w800, color: AppColors.primary)),
             ]),
           ),

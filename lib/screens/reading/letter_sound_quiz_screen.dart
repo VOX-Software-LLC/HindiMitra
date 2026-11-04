@@ -97,7 +97,7 @@ class _LetterSoundQuizScreenState extends State<LetterSoundQuizScreen> {
                 padding: const EdgeInsets.symmetric(vertical: Sp.md, horizontal: Sp.lg),
                 decoration: BoxDecoration(borderRadius: BorderRadius.circular(9999), border: Border.all(color: AppColors.primary, width: 2)),
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.refresh, size: 18, color: AppColors.primary), const SizedBox(width: Sp.sm),
+                  Icon(Icons.refresh, size: 18, color: AppColors.primary), const SizedBox(width: Sp.sm),
                   Text('Try Again', style: Fonts.body(16, w: FontWeight.w800, color: AppColors.primary)),
                 ]),
               ),
@@ -181,7 +181,7 @@ class _LetterSoundQuizScreenState extends State<LetterSoundQuizScreen> {
           child: Row(children: [
             Container(width: 36, height: 36,
                 decoration: BoxDecoration(color: AppColors.primaryLight, shape: BoxShape.circle, boxShadow: toyShadow(AppColors.primaryDark, 3)),
-                child: const Icon(Icons.volume_up, size: 20, color: AppColors.textOnPrimary)),
+                child: Icon(Icons.volume_up, size: 20, color: AppColors.textOnPrimary)),
             const SizedBox(width: Sp.sm),
             Text('Play sound', style: Fonts.body(14, w: FontWeight.w700, color: AppColors.primary)),
           ]),

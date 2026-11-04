@@ -1,0 +1,94 @@
+rules_version = '2';
+
+// Cloud accounts. Parents sign in; a child's own device signs in
+// anonymously and is paired to that child with a short-lived code a parent
+// creates. A second parent joins with an invite code the same way.
+// (Full review and emulator rule tests: sync phase 5.)
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+
+    // A parent's own profile.
+    match /parents/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Which account holds each Parent ID. Anyone signed in may check an ID;
+    // an ID is claimed once and never handed over.
+    match /parentIds/{parentId} {
+      allow get: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    // Pairing and invite codes: 8 random characters, valid for 10 minutes,
+    // used once. Knowing the code is what allows joining, so codes can be
+    // read one at a time but never listed.
+    match /pairCodes/{code} {
+      allow get: if signedIn();
+      allow create: if signedIn()
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.kind in ['device', 'parent']
+          && request.resource.data.used == false
+          && request.resource.data.expiresAt <= request.time + duration.value(15, 'm')
+          && request.auth.uid in get(/databases/$(database)/documents/students/$(request.resource.data.studentId)).data.parentUids;
+      allow update: if signedIn()
+          && resource.data.used == false && resource.data.expiresAt > request.time
+          && changed().hasOnly(['used', 'usedBy'])
+          && request.resource.data.used == true && request.resource.data.usedBy == request.auth.uid;
+      allow delete: if signedIn() && resource.data.createdBy == request.auth.uid;
+    }
+
+    match /students/{studentId} {
+      function linkedParent(data) { return signedIn() && request.auth.uid in data.parentUids; }
+      function pairedDevice(data) { return signedIn() && request.auth.uid in data.get('deviceUids', []); }
+      // The code sent with a join must be a live code of [kind] for this child.
+      function liveCode(kind) {
+        let c = get(/databases/$(database)/documents/pairCodes/$(request.resource.data.pairCode)).data;
+        return c.studentId == studentId && c.kind == kind && c.used == false && c.expiresAt > request.time;
+      }
+      // A device adds only itself (and its name), with a pairing code.
+      function joiningDevice() {
+        return changed().hasOnly(['deviceUids', 'devices', 'pairCode', 'updatedAt'])
+            && request.resource.data.deviceUids == resource.data.get('deviceUids', []).concat([request.auth.uid])
+            && liveCode('device');
+      }
+      // A parent adds only themselves (Parent ID and contact), with an invite code.
+      function joiningParent() {
+        return changed().hasOnly(['parentUids', 'parentIds', 'guardians', 'pairCode', 'updatedAt'])
+            && request.resource.data.parentUids == resource.data.parentUids.concat([request.auth.uid])
+            && liveCode('parent');
+      }
+
+      // Reading a free ID is allowed (so a new ID can be checked); another
+      // family's record is not.
+      allow get: if resource == null || linkedParent(resource.data) || pairedDevice(resource.data);
+      allow list: if linkedParent(resource.data) || pairedDevice(resource.data);
+      allow create: if linkedParent(request.resource.data) && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if (linkedParent(resource.data) && request.resource.data.ownerUid == resource.data.ownerUid)
+          || (signedIn() && (joiningDevice() || joiningParent()));
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      // Progress: the child's parents and paired devices. getAfter() so a
+      // backup can create the child and their records in one batch.
+      match /progress/{doc} {
+        allow read: if linkedParent(get(/databases/$(database)/documents/students/$(studentId)).data)
+            || pairedDevice(get(/databases/$(database)/documents/students/$(studentId)).data);
+        allow write: if linkedParent(getAfter(/databases/$(database)/documents/students/$(studentId)).data)
+            || pairedDevice(getAfter(/databases/$(database)/documents/students/$(studentId)).data);
+      }
+
+      // Homework: parents set it; the child's device only moves it forward.
+      match /homework/{hw} {
+        allow read: if linkedParent(get(/databases/$(database)/documents/students/$(studentId)).data)
+            || pairedDevice(get(/databases/$(database)/documents/students/$(studentId)).data);
+        allow create, delete: if linkedParent(getAfter(/databases/$(database)/documents/students/$(studentId)).data);
+        allow update: if linkedParent(getAfter(/databases/$(database)/documents/students/$(studentId)).data)
+            || (pairedDevice(get(/databases/$(database)/documents/students/$(studentId)).data)
+                && changed().hasOnly(['progress', 'completedAt']));
+      }
+    }
+
+    // Everything else stays closed.
+  }
+}

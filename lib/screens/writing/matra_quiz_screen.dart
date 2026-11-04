@@ -87,7 +87,7 @@ class _MatraQuizScreenState extends State<MatraQuizScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(child: showResults ? _results() : _quizBody()),
     );
   }
@@ -173,8 +173,8 @@ class _MatraQuizScreenState extends State<MatraQuizScreen> with SingleTickerProv
               GestureDetector(
                 onTap: () => speakHindi(q.target),
                 child: Container(padding: const EdgeInsets.all(Sp.md),
-                    decoration: const BoxDecoration(color: AppColors.surface, shape: BoxShape.circle),
-                    child: const Icon(Icons.volume_up, size: 24, color: AppColors.primary)),
+                    decoration: BoxDecoration(color: AppColors.surface, shape: BoxShape.circle),
+                    child: Icon(Icons.volume_up, size: 24, color: AppColors.primary)),
               ),
             ]),
           ),

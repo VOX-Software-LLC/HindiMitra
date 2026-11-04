@@ -8,6 +8,7 @@ import '../../services/crash_reporter.dart';
 import '../../services/feedback.dart';
 import '../../services/speech_service.dart';
 import '../../services/stroke_evaluator.dart';
+import '../../services/word_grader.dart';
 import '../../store/app_store.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/palette.dart';
@@ -20,7 +21,10 @@ import '../../util/num_ext.dart';
 /// line (शिरोरेखा) was drawn across the word.
 class _WordCheck {
   final List<int> unitScores; final bool headerDrawn; final int accuracy;
-  const _WordCheck(this.unitScores, this.headerDrawn, this.accuracy);
+  /// Whether the handwriting model read it as this word (null: no model), and
+  /// the points that added.
+  final bool? readByModel; final int modelBonus;
+  const _WordCheck(this.unitScores, this.headerDrawn, this.accuracy, {this.readByModel, this.modelBonus = 0});
 }
 
 /// Two separate sections:
@@ -46,7 +50,7 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
 
   // Word section
   final wordDraw = DrawController();
-  bool wordHint = false;
+  bool wordHint = false, _showStrokeOrder = false;
   int repsNeeded = 3, repsDone = 0;
   _WordCheck? check;
   String repNote = '';
@@ -59,6 +63,18 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
   StrictEvaluationResult? letterResult;
 
   Timer? _speakTimer;
+  /// The result card currently shown, scrolled into view after each check so
+  /// the score and the Next button are on screen without scrolling.
+  final _resultKey = GlobalKey();
+
+  void _revealResult() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _resultKey.currentContext;
+      if (ctx == null || !mounted) return;
+      Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd);
+    });
+  }
 
   bool get _dictation => widget.params['mode'] == 'dictation';
   PracticeWord get word => words[wi];
@@ -96,54 +112,31 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
 
   // ───────────────────────── Word section ─────────────────────────
 
-  /// Assigns each stroke to the letter box its centre falls in; a long, flat
-  /// stroke spanning several boxes is the header line and is shared between
-  /// the boxes it crosses. Each box is then graded against its block.
-  _WordCheck _gradeWord(double width, double height) {
-    final n = word.units.length;
-    final colW = width / n;
-    final parts = List.generate(n, (_) => <List<Offset>>[]);
-    bool header = false;
-    for (final s in wordDraw.strokes) {
-      if (s.isEmpty) continue;
-      double minX = s.first.dx, maxX = s.first.dx, minY = s.first.dy, maxY = s.first.dy;
-      for (final p in s) {
-        if (p.dx < minX) minX = p.dx;
-        if (p.dx > maxX) maxX = p.dx;
-        if (p.dy < minY) minY = p.dy;
-        if (p.dy > maxY) maxY = p.dy;
-      }
-      final isHeader = n > 1 && maxX - minX > colW * 1.3 && maxY - minY < height * 0.18;
-      if (isHeader) {
-        header = true;
-        for (int c = 0; c < n; c++) {
-          final seg = s.where((p) => p.dx >= c * colW && p.dx < (c + 1) * colW).toList();
-          if (seg.length > 1) parts[c].add(seg);
-        }
-      } else {
-        final c = (((minX + maxX) / 2) / colW).floor().clampI(0, n - 1);
-        parts[c].add(s);
-      }
-    }
-    final scores = [
-      for (int c = 0; c < n; c++)
-        parts[c].isEmpty ? 0 : evaluateStrokesByCharacter(parts[c], word.units[c], colW).accuracy,
-    ];
-    var acc = (scores.fold<int>(0, (a, b) => a + b) / n).round();
-    if (n > 1 && !header) acc = (acc - 8).clamp(0, 100); // the header line is part of writing a word
-    return _WordCheck(scores, header || n == 1, acc);
+  /// Grades the whole word wherever it was written on the pad (see
+  /// [gradeWordStrokes]); the guide boxes are only a help, not a rule.
+  Future<_WordCheck> _gradeWord(double width, double height) async {
+    final g = await gradeWordWithModel([for (final s in wordDraw.strokes) [...s]], word.units, Size(width, height));
+    return _WordCheck(g.unitScores, g.headerDrawn, g.accuracy, readByModel: g.readByModel, modelBonus: g.modelBonus);
   }
 
-  void _checkWord(double width, double height) {
-    if (wordDraw.isEmpty) return;
+  bool _checking = false;
+
+  Future<void> _checkWord(double width, double height) async {
+    if (wordDraw.isEmpty || _checking) return;
     _WordCheck c;
+    _checking = true;
+    wordDraw.locked = true;
     try {
-      c = _gradeWord(width, height);
+      c = await _gradeWord(width, height);
+      if (!mounted) return;
     } catch (e, st) {
+      wordDraw.locked = false;
       CrashReporter.record(e, st, reason: 'word check ${word.word}');
       wordDraw.clear();
-      showInfoDialog(context, 'Try again', "We couldn't check that one. Please write the word again.");
+      if (mounted) showInfoDialog(context, 'Try again', "We couldn't check that one. Please write the word again.");
       return;
+    } finally {
+      _checking = false;
     }
     // Good writes count as a repetition; an excellent one counts double, so
     // a child who already writes the word well finishes sooner.
@@ -160,6 +153,7 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
       if (repsDone >= repsNeeded) { doneWords.add(wi); confetti = true; }
     });
     wordDraw.locked = true;
+    _revealResult();
     gained > 0 ? hapticSuccess() : hapticMedium();
     if (repsDone >= repsNeeded) speakHindi(word.word, rate: 0.8);
   }
@@ -186,19 +180,25 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
 
   // ──────────────────────── Letter section ────────────────────────
 
-  void _checkLetter(double size) {
-    if (letterDraw.isEmpty) return;
+  Future<void> _checkLetter(double size) async {
+    if (letterDraw.isEmpty || _checking) return;
     StrictEvaluationResult r;
+    _checking = true;
+    letterDraw.locked = true;
     try {
-      r = evaluateLetterStrict(letterDraw.strokes, unit, size);
+      r = await evaluateLetterWithModel([for (final s in letterDraw.strokes) [...s]], unit, size);
+      if (!mounted) return;
     } catch (e, st) {
       CrashReporter.record(e, st, reason: 'letter check $unit');
-      letterDraw.clear();
+      letterDraw.clear(); letterDraw.locked = false;
       return;
+    } finally {
+      _checking = false;
     }
     final ok = r.stars >= 2 && r.isTargetBestMatch;
     setState(() { letterResult = r; letterTries++; if (ok) lettersDone.add(li); });
     letterDraw.locked = true;
+    _revealResult();
     ok ? hapticSuccess() : hapticMedium();
     final id = templateForCharacter(unit)?.letterId;
     if (id != null && unit.length == 1) {
@@ -230,7 +230,7 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
         child: Stack(children: [
@@ -245,7 +245,7 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
                   decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(Rad.md),
                       border: Border.all(color: AppColors.border)),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.edit_note, size: 20, color: AppColors.secondary),
+                    Icon(Icons.edit_note, size: 20, color: AppColors.secondary),
                     const SizedBox(width: 2),
                     Text('Rough', style: Fonts.body(12, w: FontWeight.w800, color: AppColors.secondary)),
                   ]),
@@ -357,7 +357,7 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
           onTap: () => speakHindi(word.word, rate: 0.7),
           child: Container(width: 52, height: 52,
               decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle, boxShadow: toyShadow(AppColors.primaryDark, 4)),
-              child: const Icon(Icons.volume_up, size: 26, color: AppColors.textOnPrimary)),
+              child: Icon(Icons.volume_up, size: 26, color: AppColors.textOnPrimary)),
         ),
       ]),
     );
@@ -369,10 +369,12 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
         decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.08), borderRadius: BorderRadius.circular(Rad.lg),
             border: Border.all(color: AppColors.secondary.withOpacity(0.3))),
         child: Row(children: [
-          const Icon(Icons.repeat, size: 18, color: AppColors.secondary),
+          Icon(Icons.repeat, size: 18, color: AppColors.secondary),
           const SizedBox(width: Sp.sm),
           Expanded(child: Text(
-              repsDone >= repsNeeded ? 'Word practiced ✓' : 'Write it $repsNeeded× · done $repsDone',
+              repsDone >= repsNeeded ? 'Word practiced ✓'
+                  : _wordGuide == 0 ? 'Last one — write it from memory!'
+                  : 'Write it $repsNeeded× · the guide fades each time',
               style: Fonts.body(13, w: FontWeight.w800, color: AppColors.secondary))),
           for (int i = 0; i < repsNeeded; i++)
             Padding(padding: const EdgeInsets.only(left: 4), child: AnimatedContainer(
@@ -447,24 +449,36 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
     ]);
   }
 
+  /// Strength of the word's tracing guide (1 = full, 0 = gone): it fades after
+  /// each good write so the last required write is from memory.
+  double get _wordGuide => repsNeeded <= 1 ? 1 : (1 - repsDone / (repsNeeded - 1)).clamp(0.0, 1.0);
+
   Widget _wordSection(double screenW) {
     final n = word.units.length;
-    final canvasW = (screenW - Sp.md * 2).clampD(260.0, 568.0);
-    final canvasH = (canvasW / n * 1.05).clampD(150.0, 220.0);
+    // Big writing area: tall boxes so each block can be traced comfortably.
+    final canvasW = (screenW - Sp.md * 2).clampD(260.0, 680.0);
+    final canvasH = (canvasW / n * 1.35).clampD(230.0, 360.0);
     final reveal = !_dictation || check != null;
     return Column(children: [
       _wordCard(showWord: reveal),
       _repsBar(),
       const SizedBox(height: Sp.md),
       if (reveal) ...[
-        Text('Stroke order — tap a block to watch it', style: Fonts.body(13, w: FontWeight.w700, color: AppColors.textSecondary)),
+        TextButton.icon(
+          onPressed: () => setState(() => _showStrokeOrder = !_showStrokeOrder),
+          icon: Icon(_showStrokeOrder ? Icons.expand_less_rounded : Icons.format_list_numbered_rounded, size: 18),
+          label: Text(_showStrokeOrder ? 'Hide stroke order' : 'Show stroke order',
+              style: Fonts.body(13, w: FontWeight.w800, color: AppColors.primaryDark)),
+        ),
+        if (_showStrokeOrder) ...[
+          _referenceStrip(),
+          const SizedBox(height: Sp.sm),
+        ],
         const SizedBox(height: Sp.xs),
-        _referenceStrip(),
-        const SizedBox(height: Sp.md),
       ] else
         Padding(padding: const EdgeInsets.only(bottom: Sp.md), child: Text('Dictation: listen and write the word you hear',
             style: Fonts.body(14, w: FontWeight.w700, color: AppColors.textSecondary))),
-      Text('Write the whole word on the line — one block per box, header line across the top',
+      Text('Trace the light word, or write it anywhere on the pad — header line across the top',
           textAlign: TextAlign.center, style: Fonts.body(14, w: FontWeight.w600, color: AppColors.textSecondary)),
       const SizedBox(height: Sp.sm),
       Container(
@@ -473,7 +487,8 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
             border: Border.all(color: AppColors.border, width: 2), boxShadow: toyShadow(AppColors.toyShadowColor, 4)),
         clipBehavior: Clip.antiAlias,
         child: Stack(children: [
-          const Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: WritingGuidePainter()))),
+          if (context.select<AppStore, String>((s) => s.boardStyle) != 'plain')
+            const Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: WritingGuidePainter()))),
           Positioned.fill(child: IgnorePointer(child: Row(children: [
             for (int i = 0; i < n; i++) Expanded(child: Container(
               decoration: BoxDecoration(
@@ -482,8 +497,14 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
                 border: i == 0 ? null : Border(left: BorderSide(color: AppColors.border.withOpacity(0.8), width: 1)),
               ),
               child: Stack(children: [
-                if (wordHint && reveal) Positioned.fill(child: Opacity(opacity: 0.85,
-                    child: StrokeOrderGuide(character: word.units[i]))),
+                // The word in light grey to trace over; it fades after every good
+                // write. "Hint" shows the coloured stroke order instead.
+                if (reveal && wordHint)
+                  Positioned.fill(child: Opacity(opacity: 0.85, child: StrokeOrderGuide(character: word.units[i])))
+                else if (reveal && _wordGuide > 0)
+                  Positioned.fill(child: AnimatedOpacity(
+                    opacity: _wordGuide, duration: const Duration(milliseconds: 700),
+                    child: _LightBlock(word.units[i]))),
                 if (check != null) Positioned(left: 0, right: 0, bottom: 2, child: Text('${word.units[i]} ${check!.unitScores[i]}%',
                     textAlign: TextAlign.center,
                     style: Fonts.body(12, w: FontWeight.w800, color: check!.unitScores[i] >= 60 ? AppColors.successDark : AppColors.error))),
@@ -491,7 +512,7 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
             )),
           ]))),
           Positioned.fill(child: DrawSurface(controller: wordDraw,
-              child: RepaintBoundary(child: CustomPaint(painter: StrokePainterPublic(wordDraw, AppColors.primaryDark, 5))))),
+              child: RepaintBoundary(child: CustomPaint(painter: StrokePainterPublic(wordDraw, AppColors.primaryDark, 9))))),
         ]),
       ),
       const SizedBox(height: Sp.md),
@@ -513,10 +534,12 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
           ]);
         })
       else
-        PopIn(key: ValueKey('w$wi-$repsDone-${check.hashCode}'), child: _wordResult()),
+        KeyedSubtree(key: _resultKey, child: PopIn(key: ValueKey('w$wi-$repsDone-${check.hashCode}'), child: _wordResult())),
       const SizedBox(height: Sp.xxl),
     ]);
   }
+
+  static int _avg(List<int> v) => v.isEmpty ? 0 : (v.fold<int>(0, (a, b) => a + b) / v.length).round();
 
   Widget _wordResult() {
     final c = check!;
@@ -535,6 +558,21 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
         ]),
         const SizedBox(height: Sp.xs),
         Text(repNote, textAlign: TextAlign.center, style: Fonts.body(14, w: FontWeight.w700, color: AppColors.textSecondary)),
+        Padding(
+          padding: const EdgeInsets.only(top: Sp.xs),
+          child: Text(
+              c.unitScores.length > 1
+                  ? 'Average of the ${c.unitScores.length} letters: ${_avg(c.unitScores)}%'
+                      '${c.headerDrawn ? '' : ' · no header line −$kNoHeaderPenalty'}'
+                      '${c.modelBonus > 0 ? ' · read correctly +${c.modelBonus}' : ''} = ${c.accuracy}%'
+                  : 'Letter score: ${c.accuracy}%',
+              textAlign: TextAlign.center, style: Fonts.body(12, w: FontWeight.w700, color: AppColors.textMuted)),
+        ),
+        if (c.readByModel == true) Padding(
+          padding: const EdgeInsets.only(top: Sp.xs),
+          child: Text('✓ The handwriting model read this as ${word.word}',
+              textAlign: TextAlign.center, style: Fonts.body(13, w: FontWeight.w700, color: AppColors.successDark)),
+        ),
         if (!c.headerDrawn) Padding(
           padding: const EdgeInsets.only(top: Sp.sm),
           child: Text('Draw one header line (शिरोरेखा) across the whole word — it joins the letters.',
@@ -608,6 +646,7 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
         ]),
         const SizedBox(height: Sp.sm),
         SimpleCanvas(controller: letterDraw, size: size, stroke: AppColors.primaryDark,
+            board: context.select<AppStore, String>((s) => s.boardStyle),
             underlay: letterHint ? Opacity(opacity: 0.75, child: AnimatedStrokeGuide(character: unit)) : null),
         const SizedBox(height: Sp.xs),
         if (letterHint) _strokeLegend(unit),
@@ -629,7 +668,7 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
             ]);
           })
         else
-          PopIn(key: ValueKey('l$li-$letterTries'), child: _letterResultCard(r)),
+          KeyedSubtree(key: _resultKey, child: PopIn(key: ValueKey('l$li-$letterTries'), child: _letterResultCard(r))),
       ],
       const SizedBox(height: Sp.xxl),
     ]);
@@ -651,10 +690,16 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
           Text('${r.accuracy}%', style: Fonts.display(24, color: AppColors.primaryDark)),
         ]),
         const SizedBox(height: Sp.sm),
-        ScoreBreakdown(r),
-        if (getActionableTip(r, templateForCharacter(unit)?.letterId ?? '') case final tip? when !ok)
-          Padding(padding: const EdgeInsets.only(top: Sp.sm),
+        if (r.accuracy < kTipsThreshold)
+          Padding(padding: const EdgeInsets.only(bottom: Sp.sm), child: ImprovementPanel(
+            tips: improvementTips(r, unit, otherLetter: wrong ? r.bestMatchCharacter : null),
+            reference: StrokeOrderGuide(character: unit, showNumbers: false),
+            onShowModel: () { _letterAgain(); setState(() => letterHint = true); },
+          ))
+        else if (getActionableTip(r, templateForCharacter(unit)?.letterId ?? '') case final tip? when !ok)
+          Padding(padding: const EdgeInsets.only(bottom: Sp.sm),
               child: Text(tip, textAlign: TextAlign.center, style: Fonts.body(13, w: FontWeight.w600, color: AppColors.textSecondary))),
+        ScoreBreakdown(r, compact: context.select<AppStore, bool>((s) => s.resultStyle == 'compact')),
         const SizedBox(height: Sp.md),
         Row(children: [
           Expanded(child: ResultButton(label: 'Try again', icon: Icons.refresh, filled: !ok, onTap: _letterAgain)),
@@ -680,4 +725,24 @@ class _WordWritingScreenState extends State<WordWritingScreen> {
       onDone: () => Navigator.of(context).maybePop(),
     );
   }
+}
+
+/// One block of the word drawn as a light grey letter to trace, sitting
+/// between the header line and the base line of the box.
+class _LightBlock extends StatelessWidget {
+  final String text;
+  const _LightBlock(this.text);
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (_, c) {
+        final h = c.maxHeight, w = c.maxWidth;
+        // Hang the letter from the header line, as large as the box allows.
+        return ClipRect(child: Padding(
+          padding: EdgeInsets.fromLTRB(w * 0.04, h * (kHeaderLineY - 0.07), w * 0.04, h * (1 - kBaseLineY - 0.08)),
+          child: Align(alignment: Alignment.topCenter, child: FittedBox(fit: BoxFit.contain, child: Padding(
+            // Room for glyph parts that hang outside the text box (matras, nukta).
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(text, style: Fonts.hindi(200, color: const Color(0xFFDCD5C9), height: 1.0)),
+          ))),
+        ));
+      });
 }

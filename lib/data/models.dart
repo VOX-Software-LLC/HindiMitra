@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/services.dart' show rootBundle;
 
+/// Opens every level and activity: no star requirements, no "complete the
+/// previous level" rule and no Premium gate. Set to false to restore the locks.
+const unlockAll = true;
+
 class HindiLetter {
   final String id, character, romanized, pronunciation, exampleWord, exampleMeaning, group;
   final int strokeCount, order;
@@ -16,9 +20,15 @@ class HindiLetter {
 
 class Matra {
   final String id, symbol, vowelBase, romanized, name, pronunciation;
+  /// Where the sign sits next to its letter: left, right, top or bottom.
+  final String position;
+  /// English sound it is like ("the 'a' in car") and a tip for children who
+  /// read Hindi written in English letters (Hinglish).
+  final String anchor, hinglish;
   Matra.fromJson(Map<String, dynamic> j)
       : id = j['id'], symbol = j['symbol'], vowelBase = j['vowelBase'],
-        romanized = j['romanized'], name = j['name'], pronunciation = j['pronunciation'];
+        romanized = j['romanized'], name = j['name'], pronunciation = j['pronunciation'],
+        position = j['position'] ?? 'right', anchor = j['anchor'] ?? '', hinglish = j['hinglish'] ?? '';
 }
 
 class MatraCombination {
@@ -102,7 +112,9 @@ class AppData {
     strokeTemplates = st.map((k, v) => MapEntry(k as String, StrokeTemplate.fromJson(v)));
     final ac = await _j('audio_catalog') as List;
     audioIds = ac.map((e) => e['id'] as String).toSet();
-    audioTextToId = {for (final e in ac) (e['text'] as String): (e['id'] as String)};
+    // First clip wins, so a later duplicate can never shadow a real recording.
+    audioTextToId = {};
+    for (final e in ac) { audioTextToId.putIfAbsent(e['text'] as String, () => e['id'] as String); }
   }
 
   static HindiLetter? letterById(String id) {
@@ -165,16 +177,16 @@ class AppData {
   }
 
   // ── Level helpers (ports of writingLevels.ts / activityLevels.ts) ──
+  /// Stars a level shows: each letter's best result (0-3★), so only stars
+  /// actually earned count — opening a letter adds nothing. The level is
+  /// completed once every letter has a 2★ write.
   static ({int earned, int total, bool completed}) levelStars(
       List<String> ids, Map<String, dynamic> progress) {
     int earned = 0; bool all = true;
     for (final id in ids) {
-      final p = progress[id];
-      if (p != null) {
-        final st = (p.currentStage as int);
-        earned += min(st, 3);
-        if (st < 1) all = false;
-      } else { all = false; }
+      final best = (progress[id]?.bestStars as int?) ?? 0;
+      earned += min(best, 3);
+      if (best < 2) all = false;
     }
     return (earned: earned, total: ids.length * 3, completed: all && ids.isNotEmpty);
   }
@@ -185,15 +197,18 @@ class AppData {
     return t;
   }
 
-  static bool isLevelUnlocked(LevelDef lvl, List<LevelDef> all, Map<String, dynamic> progress) {
-    if (lvl.requiredStars == 0) return true;
+  /// [played] holds ids of levels already finished once (they stay open even
+  /// if the star rules change).
+  static bool isLevelUnlocked(LevelDef lvl, List<LevelDef> all, Map<String, dynamic> progress,
+      {Map<String, int> played = const {}}) {
+    if (unlockAll || lvl.requiredStars == 0 || played.containsKey(lvl.id)) return true;
     return sectionStars(all, progress) >= lvl.requiredStars;
   }
 
   static ({bool unlocked, bool completed, int stars}) activityLevelState(
       String activityId, int levelIndex, Map<String, int> completed) {
     final h = completed[activityId] ?? 0;
-    final unlocked = levelIndex == 0 || h >= levelIndex;
+    final unlocked = unlockAll || levelIndex == 0 || h >= levelIndex;
     final done = h > levelIndex;
     final stars = done ? 3 : (h == levelIndex ? 2 : 0);
     return (unlocked: unlocked, completed: done, stars: stars);

@@ -129,7 +129,7 @@ class _FillBlankScreenState extends State<FillBlankScreen> {
                   onTap: () => speakHindi(ex['sentence']),
                   child: Container(padding: const EdgeInsets.all(Sp.sm),
                       decoration: BoxDecoration(color: AppColors.background, shape: BoxShape.circle, border: Border.all(color: AppColors.border)),
-                      child: const Icon(Icons.volume_up, size: 24, color: AppColors.primary)),
+                      child: Icon(Icons.volume_up, size: 24, color: AppColors.primary)),
                 )),
               ]),
             ),
@@ -149,7 +149,7 @@ class _FillBlankScreenState extends State<FillBlankScreen> {
         alignment: Alignment.center,
         decoration: selected != null
             ? BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(Rad.lg), boxShadow: toyShadow(AppColors.toyShadowColor, 4))
-            : const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.primary, width: 3))),
+            : BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.primary, width: 3))),
         child: selected == null ? null : Text(selected!, style: Fonts.hindi(20, color: AppColors.textOnPrimary)),
       );
 

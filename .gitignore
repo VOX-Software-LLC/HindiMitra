@@ -5,3 +5,7 @@ build/
 pubspec.lock
 *.iml
 .idea/
+
+# Firebase emulator logs
+firebase-debug.log
+firestore-debug.log

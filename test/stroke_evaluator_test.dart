@@ -78,9 +78,47 @@ void main() {
     expect(_acc(_draw('c27', sx: 2.5, sy: 0.6), 'c27'), lessThan(_acc(_draw('c27'), 'c27') - 15));
   });
 
-  test('drawing strokes backwards costs points', () {
+  test('drawing strokes backwards costs points but the letter is still accepted', () {
+    // Stroke direction is a style difference, not a different letter: it costs
+    // its 10 % weight, and the result names it, but the letter still passes.
     final back = [for (final s in _draw('c02')) s.reversed.toList()];
-    expect(_acc(back, 'c02'), lessThan(70));
+    final forward = _acc(_draw('c02'), 'c02');
+    expect(_acc(back, 'c02'), lessThanOrEqualTo(forward - 8));
+    expect(_acc(back, 'c02'), greaterThanOrEqualTo(70));
+    expect(evaluateStrokes(back, 'c02', 300).directionScore, lessThan(0.3));
+  });
+
+  test('the final score is exactly the weighted average of the criteria shown', () {
+    final ids = AppData.strokeTemplates.keys.toList();
+    for (int i = 0; i < ids.length; i++) {
+      for (final d in [_draw(ids[i], warp: 0.03, jitter: 8), _draw(ids[(i + 7) % ids.length], jitter: 6)]) {
+        final r = evaluateStrokes(d, ids[i], 300);
+        final sum = r.criteria.fold<double>(0, (a, c) => a + c.score * c.weight);
+        expect(r.accuracy, (sum * 100).round(), reason: ids[i]);
+        expect(r.adjustments, isEmpty);
+      }
+    }
+  });
+
+  test('weights sum to 1 and the formula behaves on hand-picked combinations', () {
+    expect(criterionWeights.reduce((a, b) => a + b), closeTo(1, 1e-9));
+    List<Criterion> cs(List<double> v) => [for (int i = 0; i < v.length; i++) Criterion('$i', v[i], criterionWeights[i])];
+    expect(weightedAverage(cs([1, 1, 1, 1, 1, 1, 1])), 100);
+    expect(weightedAverage(cs([0, 0, 0, 0, 0, 0, 0])), 0);
+    // Shape 57 %, parts 45 % and the rest around 50 % lands near 50 %, not 20 %.
+    expect(weightedAverage(cs([0.57, 0.45, 0.5, 0.5, 0.5, 0.5, 0.5])), inInclusiveRange(48, 52));
+    // A single weak criterion only costs its own weight.
+    expect(weightedAverage(cs([1, 1, 1, 1, 0, 1, 1])), 90);
+    expect(weightedAverage(cs([1, 1, 1, 1, 1, 0, 1])), 95);
+    // Every value stays in range.
+    expect(weightedAverage(cs([2, -1, 1, 1, 1, 1, 1])), inInclusiveRange(0, 100));
+  });
+
+  test('a small or squashed but correct letter is not crushed', () {
+    // Written at a third of the box and a little wide: still a pass.
+    final small = _draw('c02', size: 110, warp: 0.02, jitter: 2);
+    expect(_acc(small, 'c02'), greaterThanOrEqualTo(70));
+    expect(_acc(_draw('c02', sx: 1.25, warp: 0.02, jitter: 4), 'c02'), greaterThanOrEqualTo(70));
   });
 
   test('a missing stroke costs points', () {
@@ -105,4 +143,24 @@ void main() {
       }
     }
   });
+
+  test('a tilted letter is still the same letter', () {
+    // Children often write the whole letter on a slant: it is straightened
+    // using its header line (or standing line) before comparing.
+    List<List<Offset>> tilted(String id, double deg) {
+      final a = deg * pi / 180;
+      return [
+        for (final s in _draw(id, warp: 0.02, jitter: 4))
+          [for (final p in s) Offset(150 + (p.dx - 150) * cos(a) - (p.dy - 150) * sin(a), 150 + (p.dx - 150) * sin(a) + (p.dy - 150) * cos(a))],
+      ];
+    }
+    for (final id in AppData.strokeTemplates.keys) {
+      for (final deg in [-10.0, 10.0]) {
+        final d = tilted(id, deg);
+        expect(_acc(d, id), greaterThanOrEqualTo(80), reason: '$id tilted $deg°');
+        expect(findBestMatchingLetter(d, 300)?.letterId, id, reason: '$id tilted $deg° recognised');
+      }
+    }
+  });
 }
+

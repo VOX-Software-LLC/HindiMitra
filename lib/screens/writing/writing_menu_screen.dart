@@ -8,7 +8,6 @@ import '../../theme/palette.dart';
 import '../../widgets/common.dart';
 import '../../widgets/icons.dart';
 import '../../widgets/menu_tiles.dart';
-import '../app_shell.dart';
 
 const _levelColors = [
   Color(0xFFFF6B6B), Color(0xFFFF9F43), Color(0xFFFECA57), Color(0xFF48DBFB), Color(0xFF0ABDE3),
@@ -27,11 +26,11 @@ class _WritingMenuScreenState extends State<WritingMenuScreen> {
 
   void _toggle(String id) => setState(() => expanded[id] = !(expanded[id] ?? false));
 
-  void _goPaywall() => AppShell.of(context)?.goTo(4); // Profile tab (Paywall reachable from there)
+  void _goPaywall() => openScreen(context, 'Paywall');
 
   void _onLetterLevel(LevelDef level, List<LevelDef> all, String section) {
     final s = context.read<AppStore>();
-    final unlocked = AppData.isLevelUnlocked(level, all, s.letterProgress);
+    final unlocked = AppData.isLevelUnlocked(level, all, s.letterProgress, played: s.levelBestAccuracy);
     if (!unlocked) {
       final needed = level.requiredStars - AppData.sectionStars(all, s.letterProgress);
       showInfoDialog(context, 'Level ${level.level} Locked 🔒',
@@ -92,7 +91,7 @@ class _WritingMenuScreenState extends State<WritingMenuScreen> {
     final total = AppData.allLetters.length;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
         child: screenScroll(
@@ -128,14 +127,14 @@ class _WritingMenuScreenState extends State<WritingMenuScreen> {
               child: Row(children: [
                 Container(width: 48, height: 48,
                     decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.12), shape: BoxShape.circle),
-                    child: const Icon(Icons.edit_note, size: 28, color: AppColors.secondary)),
+                    child: Icon(Icons.edit_note, size: 28, color: AppColors.secondary)),
                 const SizedBox(width: Sp.md),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('Rough Page · रफ़ पन्ना', style: Fonts.display(18)),
                   Text('Free practice for every word on ruled lines — no scores',
                       style: Fonts.body(13, color: AppColors.textSecondary)),
                 ])),
-                const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                Icon(Icons.chevron_right, color: AppColors.textSecondary),
               ]),
             ),
           ]),
@@ -188,7 +187,7 @@ class _WritingMenuScreenState extends State<WritingMenuScreen> {
 
   Widget _letterLevelCard(LevelDef level, int index, List<LevelDef> all, Map<String, LetterProgress> prog,
       bool premiumLocked, VoidCallback onTap) {
-    final unlocked = AppData.isLevelUnlocked(level, all, prog);
+    final unlocked = AppData.isLevelUnlocked(level, all, prog, played: context.read<AppStore>().levelBestAccuracy);
     final st = AppData.levelStars(level.letterIds, prog);
     final ratio = st.total > 0 ? st.earned / st.total : 0.0;
     final color = _levelColors[index % _levelColors.length];

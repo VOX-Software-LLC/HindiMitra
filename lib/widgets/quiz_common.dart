@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/palette.dart';
 import 'common.dart';
+import 'toy_button.dart';
 
 final _rng = Random();
 
@@ -89,7 +90,7 @@ class QuizResultCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: Sp.sm + 2),
                   decoration: BoxDecoration(borderRadius: BorderRadius.circular(9999), border: Border.all(color: AppColors.primary, width: 2)),
                   child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    const Icon(Icons.refresh, size: 18, color: AppColors.primary), const SizedBox(width: Sp.sm),
+                    Icon(Icons.refresh, size: 18, color: AppColors.primary), const SizedBox(width: Sp.sm),
                     Flexible(child: Text(retryLabel, style: Fonts.body(16, w: FontWeight.w800, color: AppColors.primary))),
                   ]),
                 ),
@@ -128,7 +129,7 @@ class HearButton extends StatelessWidget {
   final VoidCallback onTap; final String label; final IconData icon;
   const HearButton({super.key, required this.onTap, this.label = 'Hear it', this.icon = Icons.volume_down});
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) => Pressable(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: Sp.md, vertical: Sp.xs),
@@ -148,7 +149,7 @@ class ScreenScaffold extends StatelessWidget {
   const ScreenScaffold({super.key, required this.child});
   @override
   Widget build(BuildContext context) =>
-      Scaffold(backgroundColor: AppColors.background, body: SafeArea(bottom: false, child: child));
+      Scaffold(backgroundColor: Colors.transparent, body: SafeArea(bottom: false, child: child));
 }
 
 /// Result screen without the card: emoji, big title, score, message, two buttons.
@@ -175,7 +176,7 @@ class SimpleResult extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: Sp.md),
                 decoration: BoxDecoration(borderRadius: BorderRadius.circular(9999), border: Border.all(color: AppColors.primary, width: 2)),
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.refresh, size: 18, color: AppColors.primary), const SizedBox(width: Sp.sm),
+                  Icon(Icons.refresh, size: 18, color: AppColors.primary), const SizedBox(width: Sp.sm),
                   Flexible(child: Text(retryLabel, style: Fonts.body(16, w: FontWeight.w800, color: AppColors.primary))),
                 ]),
               ),
@@ -207,9 +208,10 @@ Widget difficultyBadge(String d, {double fontSize = 10, FontWeight weight = Font
 
 /// Dashed rounded border drawn over [child] (RN `borderStyle: 'dashed'`).
 class DashedBorder extends StatelessWidget {
-  final Widget child; final double radius, width; final Color color; final double dash, gap;
+  final Widget child; final double radius, width; final Color? _color; final double dash, gap;
+  Color get color => _color ?? AppColors.border;
   const DashedBorder({super.key, required this.child, this.radius = Rad.xl, this.width = 2,
-      this.color = AppColors.border, this.dash = 6, this.gap = 4});
+      Color? color, this.dash = 6, this.gap = 4}) : _color = color;
   @override
   Widget build(BuildContext context) => CustomPaint(foregroundPainter: _DashedPainter(radius, width, color, dash, gap), child: child);
 }
@@ -261,7 +263,7 @@ class PlainQuizResult extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: Sp.md, horizontal: Sp.lg),
                 decoration: BoxDecoration(borderRadius: BorderRadius.circular(9999), border: Border.all(color: AppColors.primary, width: 2)),
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.refresh, size: 18, color: AppColors.primary), const SizedBox(width: Sp.sm),
+                  Icon(Icons.refresh, size: 18, color: AppColors.primary), const SizedBox(width: Sp.sm),
                   Text('Try Again', style: Fonts.body(16, w: FontWeight.w800, color: AppColors.primary)),
                 ]),
               ),
@@ -302,7 +304,7 @@ class StreakChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface, borderRadius: BorderRadius.circular(9999),
           border: goldLeft
-              ? const Border(left: BorderSide(color: AppColors.starGold, width: 4), top: BorderSide(color: AppColors.border),
+              ? Border(left: BorderSide(color: AppColors.starGold, width: 4), top: BorderSide(color: AppColors.border),
                   right: BorderSide(color: AppColors.border), bottom: BorderSide(color: AppColors.border))
               : Border.all(color: AppColors.border),
           boxShadow: toyShadow(AppColors.toyShadowColor, 3)),

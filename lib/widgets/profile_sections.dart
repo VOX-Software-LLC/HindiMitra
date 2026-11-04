@@ -173,7 +173,7 @@ class ProfileBadgeShowcase extends StatelessWidget {
                   Container(width: 56, height: 56, alignment: Alignment.center,
                       decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.background,
                           border: Border.all(color: AppColors.border, width: 2)),
-                      child: const Icon(Icons.add, color: AppColors.textMuted)),
+                      child: Icon(Icons.add, color: AppColors.textMuted)),
                   const SizedBox(height: Sp.xs),
                   Text('Pin a badge', style: Fonts.body(12, w: FontWeight.w600, color: AppColors.textMuted)),
                 ])),
@@ -183,7 +183,7 @@ class ProfileBadgeShowcase extends StatelessWidget {
   }
 }
 
-/// Sound, writing hand, language and difficulty.
+/// Sound, voice, writing hand and difficulty (theme and language live in Settings).
 class ProfileSettings extends StatelessWidget {
   const ProfileSettings({super.key});
   @override
@@ -214,10 +214,13 @@ class ProfileSettings extends StatelessWidget {
         Expanded(child: Text('Sound', style: Fonts.body(15, w: FontWeight.w600))),
         Switch(value: s.soundOn, activeThumbColor: AppColors.primary, onChanged: s.setSoundOn),
       ]),
+      seg('Voice', const [('female', 'Female'), ('male', 'Male')], s.voice, s.setVoice),
       seg('Writing hand', const [('right', 'Right'), ('left', 'Left')], s.leftHanded ? 'left' : 'right',
           (v) => s.setLeftHanded(v == 'left')),
-      seg('Language', const [('en', 'English'), ('hi', 'हिन्दी')], s.appLanguage, s.setAppLanguage),
       seg('Difficulty', const [('easy', 'Easy'), ('normal', 'Normal'), ('hard', 'Hard')], s.difficulty, s.setDifficulty),
+      seg('Writing mode', const [('guided', 'Guided'), ('independent', 'Independent')], s.writingMode, s.setWritingMode),
+      seg('Writing board', const [('copybook', 'Lines'), ('grid', 'Grid'), ('plain', 'Plain')], s.boardStyle, s.setBoardStyle),
+      seg('Result card', const [('detailed', 'Detailed'), ('compact', 'Compact')], s.resultStyle, s.setResultStyle),
     ]));
   }
 }

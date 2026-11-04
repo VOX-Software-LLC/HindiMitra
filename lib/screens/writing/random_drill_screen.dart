@@ -87,11 +87,11 @@ class _RandomDrillScreenState extends State<RandomDrillScreen> {
   @override
   Widget build(BuildContext context) {
     size = (MediaQuery.of(context).size.width - Sp.md * 2).clampD(200.0, 350.0);
-    Widget scaffold(Widget body) => Scaffold(backgroundColor: AppColors.background, body: SafeArea(bottom: false, child: body));
+    Widget scaffold(Widget body) => Scaffold(backgroundColor: Colors.transparent, body: SafeArea(bottom: false, child: body));
     if (queue.isEmpty) {
       return scaffold(Column(children: [
         HeaderBar(title: 'Random Drill', onBack: () => Navigator.of(context).maybePop()),
-        const Expanded(child: Center(child: CircularProgressIndicator(color: AppColors.primary))),
+        Expanded(child: Center(child: CircularProgressIndicator(color: AppColors.primary))),
       ]));
     }
     if (complete) {
@@ -186,8 +186,12 @@ class _RandomDrillScreenState extends State<RandomDrillScreen> {
             child: Text('Your writing looks more like $lookedLike', style: Fonts.body(14, w: FontWeight.w700, color: AppColors.error)),
           ),
           const SizedBox(height: Sp.md),
+          if (r.accuracy < kTipsThreshold) Padding(
+            padding: const EdgeInsets.only(bottom: Sp.sm),
+            child: ImprovementPanel(tips: improvementTips(r, AppData.letterById(queue[idx])?.character ?? '', otherLetter: lookedLike)),
+          ),
           ScoreBreakdown(r),
-          if (getActionableTip(r, queue[idx]) case final tip?) Padding(
+          if (r.accuracy >= kTipsThreshold) if (getActionableTip(r, queue[idx]) case final tip?) Padding(
             padding: const EdgeInsets.only(top: Sp.sm),
             child: Text(tip, textAlign: TextAlign.center, style: Fonts.body(13, w: FontWeight.w600, color: AppColors.textSecondary)),
           ),

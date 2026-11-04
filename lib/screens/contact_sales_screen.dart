@@ -78,21 +78,21 @@ class _ContactSalesScreenState extends State<ContactSalesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(backgroundColor: AppColors.background, resizeToAvoidBottomInset: true, body: SafeArea(bottom: false, child: screenScroll(
+    return Scaffold(backgroundColor: Colors.transparent, resizeToAvoidBottomInset: true, body: SafeArea(bottom: false, child: screenScroll(
       maxWidth: 720, padding: const EdgeInsets.all(Sp.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Align(alignment: Alignment.centerLeft, child: GestureDetector(onTap: () => Navigator.of(context).maybePop(), child: Container(
           width: 44, height: 44,
           decoration: BoxDecoration(color: AppColors.surface, shape: BoxShape.circle, border: Border.all(color: AppColors.border), boxShadow: toyShadow(AppColors.toyShadowColor, 3)),
-          child: const Icon(Icons.chevron_left, size: 22, color: AppColors.textPrimary)))),
+          child: Icon(Icons.chevron_left, size: 22, color: AppColors.textPrimary)))),
         const SizedBox(height: Sp.lg),
         Container(
           padding: const EdgeInsets.all(Sp.lg),
           decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(Rad.xl2), boxShadow: softShadow(AppColors.primary)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(width: 52, height: 52, margin: const EdgeInsets.only(bottom: Sp.xs + Sp.sm),
-                decoration: const BoxDecoration(color: AppColors.primaryDark, shape: BoxShape.circle),
-                child: const Icon(Icons.school, size: 26, color: AppColors.textOnPrimary)),
+                decoration: BoxDecoration(color: AppColors.primaryDark, shape: BoxShape.circle),
+                child: Icon(Icons.school, size: 26, color: AppColors.textOnPrimary)),
             Text('School / district plans', style: Fonts.display(32, color: AppColors.textOnPrimary, w: FontWeight.w800)),
             const SizedBox(height: Sp.xs + Sp.sm),
             Opacity(opacity: 0.92, child: Text(
@@ -118,14 +118,14 @@ class _ContactSalesScreenState extends State<ContactSalesScreen> {
                 padding: const EdgeInsets.symmetric(vertical: Sp.md, horizontal: Sp.xl),
                 decoration: BoxDecoration(gradient: toneGradient(AppColors.primary), borderRadius: BorderRadius.circular(9999), boxShadow: toyShadow(AppColors.primaryDark, 6)),
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textOnPrimary)),
+                  SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textOnPrimary)),
                   const SizedBox(width: Sp.sm),
                   Text('Sending…', style: Fonts.body(16, w: FontWeight.w800, color: AppColors.textOnPrimary)),
                 ]),
               ))
             else
               ToyButton(label: 'Send to sales team', onPressed: _submit, variant: ToyVariant.primary, size: ToySize.lg, fullWidth: true,
-                  trailing: const Icon(Icons.send_outlined, size: 18, color: AppColors.textOnPrimary)),
+                  trailing: Icon(Icons.send_outlined, size: 18, color: AppColors.textOnPrimary)),
           ]),
         ),
       ]),

@@ -107,7 +107,7 @@ class _ConjunctPracticeScreenState extends State<ConjunctPracticeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    Widget scaffold(Widget body) => Scaffold(backgroundColor: AppColors.background, body: SafeArea(bottom: false, child: body));
+    Widget scaffold(Widget body) => Scaffold(backgroundColor: Colors.transparent, body: SafeArea(bottom: false, child: body));
     if (complete) return scaffold(_complete());
     final c = _conjuncts[idx.clampI(0, _conjuncts.length - 1)];
     size = (MediaQuery.of(context).size.width - Sp.md * 2).clampD(200.0, 300.0);
@@ -138,7 +138,7 @@ class _ConjunctPracticeScreenState extends State<ConjunctPracticeScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: Sp.lg, vertical: Sp.sm),
                   decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(9999)),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.volume_up, size: 18, color: AppColors.primary), const SizedBox(width: Sp.sm),
+                    Icon(Icons.volume_up, size: 18, color: AppColors.primary), const SizedBox(width: Sp.sm),
                     Text(c.pronunciation, style: Fonts.body(14, w: FontWeight.w700, color: AppColors.primary)),
                   ]),
                 ),

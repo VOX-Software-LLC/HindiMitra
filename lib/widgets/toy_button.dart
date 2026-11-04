@@ -6,7 +6,8 @@ enum ToyVariant { primary, secondary, outline, ghost, success }
 enum ToySize { sm, md, lg }
 
 /// Tap target that sinks a little and shrinks slightly while pressed, then
-/// springs back — the shared "press" feel of every button and tile.
+/// springs back — the shared "press" feel of every button and tile. With a
+/// mouse it shows a pointer and lifts slightly on hover.
 class Pressable extends StatefulWidget {
   final Widget child; final VoidCallback? onTap; final double depth;
   const Pressable({super.key, required this.child, this.onTap, this.depth = 3});
@@ -15,23 +16,30 @@ class Pressable extends StatefulWidget {
 }
 
 class _PressableState extends State<Pressable> {
-  bool _down = false;
+  bool _down = false, _hover = false;
   void _set(bool v) { if (widget.onTap != null && v != _down) setState(() => _down = v); }
+  void _setHover(bool v) { if (widget.onTap != null && v != _hover) setState(() => _hover = v); }
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => _set(true),
-        onTapUp: (_) => _set(false),
-        onTapCancel: () => _set(false),
-        onTap: widget.onTap,
-        child: AnimatedScale(
-          scale: _down ? 0.97 : 1,
-          duration: const Duration(milliseconds: 110),
-          curve: Curves.easeOut,
-          child: AnimatedSlide(
-            offset: Offset(0, _down ? widget.depth / 100 : 0),
-            duration: const Duration(milliseconds: 110),
-            child: widget.child,
+  Widget build(BuildContext context) => MouseRegion(
+        cursor: widget.onTap != null ? SystemMouseCursors.click : MouseCursor.defer,
+        onEnter: (_) => _setHover(true),
+        onExit: (_) => _setHover(false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => _set(true),
+          onTapUp: (_) => _set(false),
+          onTapCancel: () => _set(false),
+          onTap: widget.onTap,
+          child: AnimatedScale(
+            scale: _down ? 0.97 : _hover ? 1.015 : 1,
+            duration: Duration(milliseconds: _down ? 110 : 180),
+            curve: Curves.easeOut,
+            child: AnimatedSlide(
+              offset: Offset(0, _down ? widget.depth / 100 : _hover ? -0.012 : 0),
+              duration: Duration(milliseconds: _down ? 110 : 180),
+              curve: Curves.easeOut,
+              child: widget.child,
+            ),
           ),
         ),
       );

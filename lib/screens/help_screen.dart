@@ -21,7 +21,7 @@ class HelpScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sections = faqData.cast<Map>();
-    return Scaffold(backgroundColor: AppColors.background, body: SafeArea(bottom: false, child: Column(children: [
+    return Scaffold(backgroundColor: Colors.transparent, body: SafeArea(bottom: false, child: Column(children: [
       HeaderBar(title: 'Help & Support', subtitle: 'सहायता', onBack: () => Navigator.of(context).maybePop()),
       Expanded(child: screenScroll(padding: const EdgeInsets.all(Sp.md), maxWidth: 720, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Container(

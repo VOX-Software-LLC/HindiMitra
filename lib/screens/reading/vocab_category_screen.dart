@@ -12,6 +12,7 @@ import '../../widgets/icons.dart';
 import '../../widgets/progress_bar.dart';
 import '../../widgets/quiz_common.dart';
 import '../../util/num_ext.dart';
+import '../../util/transliterate.dart';
 
 class _MQ {
   final String hindiWord; final List<String> options; final int correctIndex;
@@ -43,6 +44,7 @@ class _VocabCategoryScreenState extends State<VocabCategoryScreen> {
   Map? category;
   int wordIndex = 0;
   String? playing;
+  bool flipped = false;
   List<_MQ> questions = [];
   int quizIndex = 0, quizScore = 0;
   int? selectedAnswer;
@@ -122,10 +124,10 @@ class _VocabCategoryScreenState extends State<VocabCategoryScreen> {
             Padding(padding: const EdgeInsets.only(bottom: Sp.lg),
                 child: Text('Choose a Topic', style: Fonts.display(24, color: AppColors.textPrimary, w: FontWeight.w800))),
             LayoutBuilder(builder: (context, c) {
-              final cardW = c.maxWidth * 0.48;
-              // RN: space-between + gap md (wraps to 1 column when narrow)
-              final gap = (c.maxWidth - 2 * cardW) < Sp.md ? Sp.md : (c.maxWidth - 2 * cardW);
-              return Wrap(spacing: gap, runSpacing: Sp.md, children: [
+              // Two topic cards per row on phones, three on wider screens.
+              final cols = c.maxWidth >= 640 ? 3 : 2;
+              final cardW = (c.maxWidth - Sp.md * (cols - 1)) / cols;
+              return Wrap(spacing: Sp.md, runSpacing: Sp.md, children: [
                 for (final cat in vocabCategoriesData.cast<Map>()) _catCard(cat, cardW),
               ]);
             }),
@@ -137,7 +139,7 @@ class _VocabCategoryScreenState extends State<VocabCategoryScreen> {
   Widget _catCard(Map cat, double w) {
     final color = hexColor(cat['color'] as String);
     return GestureDetector(
-      onTap: () => setState(() { category = cat; state = _S.learn; wordIndex = 0; }),
+      onTap: () => setState(() { category = cat; state = _S.learn; wordIndex = 0; flipped = false; }),
       child: Container(
         width: w,
         padding: const EdgeInsets.symmetric(vertical: Sp.lg),
@@ -151,6 +153,10 @@ class _VocabCategoryScreenState extends State<VocabCategoryScreen> {
           const SizedBox(height: Sp.sm),
           Text(cat['hindiName'], style: Fonts.hindi(14, color: AppColors.textSecondary)),
           const SizedBox(height: Sp.sm),
+          // A peek at the words inside.
+          Text([for (final w in (cat['words'] as List).take(4)) (w as Map)['emoji']].join(' '),
+              style: const TextStyle(fontSize: 18)),
+          const SizedBox(height: Sp.xs),
           Text('${(cat['words'] as List).length} words', style: Fonts.body(12, color: AppColors.textMuted)),
         ]),
       ),
@@ -160,7 +166,6 @@ class _VocabCategoryScreenState extends State<VocabCategoryScreen> {
   Widget _learn() {
     final words = _words;
     final word = words[wordIndex];
-    final isLast = wordIndex == words.length - 1;
     final color = _cc;
     return ScreenScaffold(child: Column(children: [
       HeaderBar(
@@ -175,83 +180,151 @@ class _VocabCategoryScreenState extends State<VocabCategoryScreen> {
       HsProgressBar(progress: (wordIndex + 1) / words.length, height: 4),
       Expanded(child: screenScroll(
         padding: const EdgeInsets.symmetric(horizontal: Sp.md, vertical: Sp.lg),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Container(
-            margin: const EdgeInsets.only(bottom: Sp.lg),
-            padding: const EdgeInsets.symmetric(vertical: Sp.xl, horizontal: Sp.lg),
-            decoration: BoxDecoration(color: color.withAlpha(0x15), borderRadius: BorderRadius.circular(Rad.xl2), boxShadow: softShadow(AppColors.primary)),
-            child: Column(children: [
-              Text(word['emoji'], style: const TextStyle(fontSize: 80)),
-              const SizedBox(height: Sp.lg),
-              GestureDetector(
-                onTap: () => _play(word['hindi']),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: Sp.xl, vertical: Sp.lg),
-                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(9999), boxShadow: toyShadow(AppColors.toyShadowColor, 6)),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text(word['hindi'], style: Fonts.hindi(48, color: AppColors.textOnPrimary)),
-                    const SizedBox(width: Sp.md),
-                    Icon(playing == word['hindi'] ? Icons.volume_up : Icons.volume_off, size: 20, color: AppColors.textOnPrimary),
-                  ]),
-                ),
-              ),
-              const SizedBox(height: Sp.lg),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: Sp.lg, vertical: Sp.md),
-                decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(Rad.lg), border: Border.all(color: AppColors.border)),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Padding(padding: const EdgeInsets.only(bottom: Sp.xs), child: Text('ENGLISH:',
-                      style: Fonts.body(12, w: FontWeight.w700, color: AppColors.textSecondary).copyWith(letterSpacing: 0.5))),
-                  Text(word['english'], style: Fonts.display(24, color: AppColors.textPrimary)),
-                ]),
-              ),
-            ]),
-          ),
+        child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 640), child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          // The word as a flash card: picture and Hindi on the front, English on the back.
           GestureDetector(
-            onTap: () => speakHindi(word['english'], rate: 0.6),
-            child: Padding(padding: const EdgeInsets.only(bottom: Sp.lg), child: Container(
-              padding: const EdgeInsets.symmetric(vertical: Sp.md), color: Colors.transparent,
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.volume_up, size: 18, color: AppColors.primary), const SizedBox(width: Sp.sm),
-                Text('Hear English', style: Fonts.body(14, w: FontWeight.w700, color: AppColors.primary)),
-              ]),
-            )),
+            onTap: () => setState(() => flipped = !flipped),
+            onHorizontalDragEnd: (d) {
+              final v = d.primaryVelocity ?? 0;
+              if (v < -200) { _goTo(wordIndex + 1); } else if (v > 200) { _goTo(wordIndex - 1); }
+            },
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 320),
+              transitionBuilder: (child, anim) {
+                final turn = Tween(begin: 0.5, end: 1.0).animate(anim);
+                return AnimatedBuilder(animation: turn, child: child, builder: (_, c) => Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.identity()..setEntry(3, 2, 0.0012)..rotateY((1 - turn.value) * 3.14159),
+                  child: Opacity(opacity: anim.value < 0.5 ? 0 : 1, child: c)));
+              },
+              child: flipped
+                  ? _cardBack(word, color, key: ValueKey('b$wordIndex'))
+                  : _cardFront(word, color, key: ValueKey('f$wordIndex')),
+            ),
           ),
-          Padding(padding: const EdgeInsets.symmetric(vertical: Sp.lg), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Padding(padding: const EdgeInsets.only(bottom: Sp.md),
-                child: Text('All words in this category:', style: Fonts.display(16, color: AppColors.textPrimary, w: FontWeight.w700))),
-            Wrap(spacing: Sp.sm, runSpacing: Sp.sm, children: [
-              for (int i = 0; i < words.length; i++) GestureDetector(
-                onTap: () => setState(() => wordIndex = i),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: Sp.md, vertical: Sp.sm),
-                  decoration: BoxDecoration(color: wordIndex == i ? color : AppColors.surface, borderRadius: BorderRadius.circular(Rad.lg),
-                      border: Border.all(color: AppColors.border), boxShadow: toyShadow(AppColors.toyShadowColor, 3)),
-                  child: Text(words[i]['hindi'], style: Fonts.hindi(16, color: wordIndex == i ? AppColors.textOnPrimary : AppColors.textPrimary)),
-                ),
-              ),
-            ]),
-          ])),
-          Padding(padding: const EdgeInsets.symmetric(vertical: Sp.lg), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            _navBtn(Icons.chevron_left, wordIndex == 0, () => setState(() => wordIndex = (wordIndex - 1).clampI(0, words.length - 1))),
+          const SizedBox(height: Sp.sm),
+          Text(flipped ? 'Tap the card to see the Hindi again' : 'Tap the card to see the meaning · swipe for the next word',
+              textAlign: TextAlign.center, style: Fonts.body(12.5, w: FontWeight.w700, color: AppColors.textMuted)),
+          Padding(padding: const EdgeInsets.symmetric(vertical: Sp.md), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            _navBtn(Icons.chevron_left, wordIndex == 0, () => _goTo(wordIndex - 1)),
             const SizedBox(width: Sp.lg),
-            _navBtn(Icons.chevron_right, isLast, () => setState(() => wordIndex = (wordIndex + 1).clampI(0, words.length - 1))),
+            _navBtn(Icons.chevron_right, wordIndex == words.length - 1, () => _goTo(wordIndex + 1)),
           ])),
-          if (isLast) Padding(padding: const EdgeInsets.only(top: Sp.lg), child: GestureDetector(
+          // Every word in the topic, as cards.
+          Padding(padding: const EdgeInsets.only(top: Sp.sm, bottom: Sp.md), child: Row(children: [
+            Expanded(child: Text('All ${words.length} words', style: Fonts.display(18, color: AppColors.textPrimary, w: FontWeight.w700))),
+            Text('Tap a card to hear it', style: Fonts.body(12, w: FontWeight.w700, color: AppColors.textMuted)),
+          ])),
+          LayoutBuilder(builder: (context, c) {
+            final cols = c.maxWidth >= 520 ? 4 : c.maxWidth >= 340 ? 3 : 2;
+            final w = (c.maxWidth - Sp.sm * (cols - 1)) / cols;
+            return Wrap(spacing: Sp.sm, runSpacing: Sp.sm, children: [
+              for (int i = 0; i < words.length; i++) SizedBox(width: w, child: _miniCard(i, words[i], color)),
+            ]);
+          }),
+          Padding(padding: const EdgeInsets.only(top: Sp.xl), child: GestureDetector(
             onTap: _startQuiz,
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: Sp.lg),
               decoration: BoxDecoration(gradient: toneGradient(AppColors.primary), borderRadius: BorderRadius.circular(9999), boxShadow: toyShadow(AppColors.primaryDark, 6)),
               child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.help, size: 20, color: AppColors.textOnPrimary), const SizedBox(width: Sp.md),
+                Icon(Icons.help, size: 20, color: AppColors.textOnPrimary), const SizedBox(width: Sp.md),
                 Text('Test with Quiz', style: Fonts.body(16, w: FontWeight.w800, color: AppColors.textOnPrimary)),
               ]),
             ),
           )),
           const SizedBox(height: Sp.xl),
-        ]),
+        ]))),
       )),
     ]));
+  }
+
+  void _goTo(int i) {
+    final n = _words.length;
+    if (i < 0 || i >= n) return;
+    setState(() { wordIndex = i; flipped = false; });
+    _play(_words[i]['hindi']);
+  }
+
+  BoxDecoration _cardDecoration(Color color, {bool back = false}) => BoxDecoration(
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: back
+                ? [Color.lerp(color, Colors.white, 0.05)!, shade(color, 0.12)]
+                : [Colors.white, Color.lerp(color, Colors.white, 0.86)!]),
+        borderRadius: BorderRadius.circular(Rad.xl2),
+        border: Border.all(color: color.withOpacity(back ? 0 : 0.45), width: 2),
+        boxShadow: toyShadow(shade(color, 0.2).withOpacity(0.55), 6),
+      );
+
+  Widget _cardFront(Map word, Color color, {Key? key}) => Container(
+        key: key, height: 300,
+        decoration: _cardDecoration(color),
+        child: Stack(children: [
+          Positioned(top: Sp.md, right: Sp.md, child: GestureDetector(
+            onTap: () => _play(word['hindi']),
+            child: Container(
+              width: 46, height: 46, alignment: Alignment.center,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle, boxShadow: toyShadow(shade(color, 0.25), 3)),
+              child: Icon(playing == word['hindi'] ? Icons.volume_up_rounded : Icons.volume_up_outlined, color: Colors.white, size: 24),
+            ),
+          )),
+          Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text(word['emoji'], style: const TextStyle(fontSize: 76)),
+            const SizedBox(height: Sp.sm),
+            Text(word['hindi'], style: Fonts.hindi(52, color: AppColors.textPrimary, height: 1.25)),
+            Text(toRoman(word['hindi']), style: Fonts.body(16, w: FontWeight.w700, color: AppColors.textSecondary).copyWith(letterSpacing: 0.5)),
+          ])),
+        ]),
+      );
+
+  Widget _cardBack(Map word, Color color, {Key? key}) => Container(
+        key: key, height: 300,
+        decoration: _cardDecoration(color, back: true),
+        child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(word['emoji'], style: const TextStyle(fontSize: 44)),
+          const SizedBox(height: Sp.sm),
+          Text('ENGLISH', style: Fonts.body(12, w: FontWeight.w800, color: Colors.white.withOpacity(0.85)).copyWith(letterSpacing: 1.5)),
+          Text(word['english'], textAlign: TextAlign.center, style: Fonts.display(38, color: Colors.white)),
+          const SizedBox(height: Sp.xs),
+          Text('${word['hindi']} = ${word['english']}', style: Fonts.hindi(18, color: Colors.white.withOpacity(0.92))),
+          const SizedBox(height: Sp.md),
+          GestureDetector(
+            onTap: () => speakEnglish(word['english']),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: Sp.lg, vertical: Sp.sm),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(9999)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.volume_up_rounded, size: 18, color: shade(color, 0.15)), const SizedBox(width: Sp.sm),
+                Text('Hear English', style: Fonts.body(14, w: FontWeight.w800, color: shade(color, 0.15))),
+              ]),
+            ),
+          ),
+        ])),
+      );
+
+  Widget _miniCard(int i, Map word, Color color) {
+    final sel = i == wordIndex;
+    return GestureDetector(
+      onTap: () => _goTo(i),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: Sp.md, horizontal: Sp.xs),
+        decoration: BoxDecoration(
+          color: sel ? color.withOpacity(0.14) : AppColors.surface,
+          borderRadius: BorderRadius.circular(Rad.lg),
+          border: Border.all(color: sel ? color : AppColors.border, width: sel ? 2 : 1),
+          boxShadow: toyShadow(AppColors.toyShadowColor, sel ? 4 : 3)),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(word['emoji'], style: const TextStyle(fontSize: 32)),
+          const SizedBox(height: 4),
+          Text(word['hindi'], maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: Fonts.hindi(20, color: AppColors.textPrimary, height: 1.3)),
+          Text(word['english'], maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: Fonts.body(12, w: FontWeight.w700, color: AppColors.textSecondary)),
+        ]),
+      ),
+    );
   }
 
   Widget _navBtn(IconData icon, bool disabled, VoidCallback onTap) => GestureDetector(

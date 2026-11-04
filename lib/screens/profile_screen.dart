@@ -8,7 +8,9 @@ import '../theme/app_theme.dart';
 import '../theme/palette.dart';
 import '../widgets/common.dart';
 import '../widgets/profile_sections.dart';
-import 'app_shell.dart';
+import '../widgets/hindi_name.dart';
+import 'accounts/account_widgets.dart';
+import 'accounts/important_info.dart';
 
 const _feedbackEmail = 'shahi.aditya@gmail.com';
 const _appVersion = '1.0.0';
@@ -72,9 +74,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             decoration: InputDecoration(
               counterText: '', hintText: 'Enter your name', hintStyle: Fonts.body(16, color: AppColors.textMuted),
               filled: true, fillColor: AppColors.surface, contentPadding: const EdgeInsets.all(Sp.md),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(Rad.lg), borderSide: const BorderSide(color: AppColors.border)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(Rad.lg), borderSide: const BorderSide(color: AppColors.border)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(Rad.lg), borderSide: const BorderSide(color: AppColors.border)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(Rad.lg), borderSide: BorderSide(color: AppColors.border)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(Rad.lg), borderSide: BorderSide(color: AppColors.border)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(Rad.lg), borderSide: BorderSide(color: AppColors.border)),
             ),
           ),
           const SizedBox(height: Sp.lg),
@@ -132,13 +134,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final (userName, userLevel, isPremium, avatar) =
-        context.select<AppStore, (String, int, bool, String)>(
-            (store) => (store.userName, store.userLevel, store.isPremium, store.avatar));
+    final (userName, userLevel, isPremium, avatar, studentId) =
+        context.select<AppStore, (String, int, bool, String, String)>(
+            (store) => (store.userName, store.userLevel, store.isPremium, store.avatar, store.activeStudentId));
     final menu = <(IconData, String)>[
       (Icons.person_outline, 'Edit Profile'),
-      (Icons.notifications_none, 'Notifications'),
-      (Icons.people_outline, 'Family / Classroom'),
+      (Icons.swap_horiz_rounded, 'Switch Learner'),
+      (Icons.shield_outlined, 'Parent Control'),
+      (Icons.settings_outlined, 'Settings'),
       (Icons.bar_chart, 'Detailed Progress'),
       (Icons.diamond_outlined, isPremium ? 'Manage Subscription' : 'Go Premium'),
       (Icons.mail_outline, 'Send Feedback'),
@@ -147,17 +150,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     void tap(String label) {
       switch (label) {
         case 'Edit Profile': _editProfile(); break;
-        case 'Notifications': openScreen(context, 'Settings'); break;
+        case 'Settings': openScreen(context, 'Settings'); break;
         case 'Go Premium':
         case 'Manage Subscription': openScreen(context, 'Paywall'); break;
-        case 'Family / Classroom':
+        case 'Switch Learner': showLearnerSwitcher(context); break;
+        case 'Parent Control': openParentControl(context); break;
         case 'Detailed Progress': openScreen(context, 'ParentDashboard'); break;
         case 'Send Feedback': _sendFeedback(); break;
         case 'Help & Support': openScreen(context, 'HelpSupport'); break;
       }
     }
 
-    return Container(color: AppColors.background, child: SafeArea(bottom: false, child: SingleChildScrollView(
+    return Container(color: Colors.transparent, child: SafeArea(bottom: false, child: SingleChildScrollView(
       padding: const EdgeInsets.all(Sp.md),
       child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Container(
@@ -177,18 +181,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       : Text(userName.isEmpty ? '' : userName[0].toUpperCase(),
                           style: Fonts.display(32, color: AppColors.primaryDark, w: FontWeight.w800)),
                 ),
-                const Positioned(right: -2, bottom: Sp.md - 2, child: CircleAvatar(radius: 13, backgroundColor: AppColors.primaryDark,
+                Positioned(right: -2, bottom: Sp.md - 2, child: CircleAvatar(radius: 13, backgroundColor: AppColors.primaryDark,
                     child: Icon(Icons.edit, size: 14, color: Colors.white))),
               ]),
             ),
             Text(userName, style: Fonts.display(24, color: AppColors.textOnPrimary, w: FontWeight.w800)),
+            HindiNameLine(color: AppColors.textOnPrimary, size: 20),
             Opacity(opacity: 0.92, child: Text('Level $userLevel', style: Fonts.body(16, w: FontWeight.w700, color: AppColors.textOnPrimary))),
+            const SizedBox(height: Sp.sm),
+            IdChip(studentId, color: AppColors.textOnPrimary),
           ]),
         ),
+        ImportantInfoCard(studentId: studentId),
         const ProfileProgressSummary(),
         const ProfileWeakLetters(),
         const ProfileWeeklyChart(),
-        ProfileBadgeShowcase(onOpenRewards: () => AppShell.of(context)?.goTo(3)),
+        ProfileBadgeShowcase(onOpenRewards: () => openScreen(context, 'Rewards')),
         const ProfileSettings(),
         const ProfileParentReport(),
         const SizedBox(height: Sp.sm),
@@ -201,7 +209,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Row(children: [
               Icon(m.$1, size: 22, color: AppColors.textPrimary), const SizedBox(width: Sp.md),
               Expanded(child: Text(m.$2, style: Fonts.body(16, w: FontWeight.w600, color: AppColors.textPrimary))),
-              const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+              Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
             ]),
           ),
         ),

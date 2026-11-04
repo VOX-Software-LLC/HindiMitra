@@ -129,7 +129,7 @@ class _WordReadingScreenState extends State<WordReadingScreen> {
                   decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.09), borderRadius: BorderRadius.circular(9999),
                       border: Border.all(color: AppColors.primary.withOpacity(0.33))),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.play_circle_fill, size: 28, color: AppColors.primary), const SizedBox(width: Sp.sm),
+                    Icon(Icons.play_circle_fill, size: 28, color: AppColors.primary), const SizedBox(width: Sp.sm),
                     Text('Play full word', style: Fonts.body(14, w: FontWeight.w800, color: AppColors.primaryDark)),
                   ]),
                 ),
