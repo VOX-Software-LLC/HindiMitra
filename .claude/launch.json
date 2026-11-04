@@ -4,8 +4,51 @@
     {
       "name": "flutter-web-debug",
       "runtimeExecutable": "flutter",
-      "runtimeArgs": ["run", "-d", "web-server", "--web-port", "8765", "--web-hostname", "localhost"],
+      "runtimeArgs": [
+        "run",
+        "-d",
+        "web-server",
+        "--web-port",
+        "8765",
+        "--web-hostname",
+        "localhost"
+      ],
       "port": 8765
+    },
+    {
+      "name": "flutter-web-emulator",
+      "runtimeExecutable": "flutter",
+      "runtimeArgs": [
+        "run",
+        "-d",
+        "web-server",
+        "--web-port",
+        "8766",
+        "--web-hostname",
+        "localhost",
+        "--dart-define=USE_FIREBASE_EMULATOR=true"
+      ],
+      "port": 8766
+    },
+    {
+      "name": "web-emu-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8770",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "C:/Users/Abhis/AppData/Local/Temp/claude/C--Desktop-HindiLearning/61b1ae10-80a8-40db-a2dd-7a7b9bac1523/scratchpad/web-emu"
+      ],
+      "port": 8770
+    },
+    {
+      "name": "web-release-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8780", "--bind", "127.0.0.1", "--directory", "build/web"],
+      "port": 8780
     }
   ]
 }

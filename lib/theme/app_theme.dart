@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'palette.dart';
+import 'themes.dart';
 
 /// Baloo 2 = display, Nunito = body, Tiro Devanagari Hindi = Hindi glyphs.
 ///
@@ -74,21 +75,27 @@ LinearGradient toneGradient(Color c) => LinearGradient(
 /// A colour darkened by [amount] (0-1), for the 3D edge under coloured shapes.
 Color shade(Color c, [double amount = 0.22]) => Color.lerp(c, Colors.black, amount)!;
 
-ThemeData buildTheme(Brightness b) {
-  final p = b == Brightness.dark ? Palette.dark : Palette.light;
+/// Material theme for the current [AppThemes] look. Scaffolds are transparent:
+/// every route paints the theme's backdrop (gradient + pattern) behind itself.
+ThemeData buildTheme() {
+  final t = AppThemes.current;
+  final b = t.dark ? Brightness.dark : Brightness.light;
   final base = ThemeData(
     useMaterial3: true,
     brightness: b,
-    scaffoldBackgroundColor: p.background,
-    colorScheme: ColorScheme.fromSeed(seedColor: p.primary, brightness: b)
-        .copyWith(primary: p.primary, secondary: p.secondary, surface: p.card, error: p.destructive),
+    scaffoldBackgroundColor: Colors.transparent,
+    colorScheme: ColorScheme.fromSeed(seedColor: t.primary, brightness: b).copyWith(
+        primary: t.primary, secondary: t.secondary, surface: t.surface, onSurface: t.textPrimary,
+        error: AppColors.error),
+    dialogTheme: DialogThemeData(backgroundColor: t.surface),
+    bottomSheetTheme: BottomSheetThemeData(backgroundColor: t.surface),
   );
   return base.copyWith(
     textTheme: GoogleFonts.nunitoTextTheme(base.textTheme)
-        .apply(bodyColor: p.foreground, displayColor: p.foreground),
-    // Screens slide up and fade in on every platform, instead of snapping.
+        .apply(bodyColor: t.textPrimary, displayColor: t.textPrimary),
+    // Screens slide up and fade in on every platform, over the theme backdrop.
     pageTransitionsTheme: PageTransitionsTheme(builders: {
-      for (final t in TargetPlatform.values) t: const FadeUpwardsPageTransitionsBuilder(),
+      for (final p in TargetPlatform.values) p: const BackdropPageTransitionsBuilder(),
     }),
     splashFactory: InkSparkle.splashFactory,
   );

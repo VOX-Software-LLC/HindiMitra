@@ -4,6 +4,7 @@ import '../../services/speech_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/palette.dart';
 import '../../widgets/common.dart';
+import '../matra/matra_text.dart';
 
 class MatraScreen extends StatefulWidget {
   final Map<String, dynamic> params;
@@ -23,7 +24,7 @@ class _MatraScreenState extends State<MatraScreen> {
     Widget label(String t) => Padding(
         padding: const EdgeInsets.only(top: Sp.lg, bottom: Sp.sm), child: Text(t, style: Fonts.display(18)));
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
         child: Column(children: [
@@ -58,7 +59,8 @@ class _MatraScreenState extends State<MatraScreen> {
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(selected.name, style: Fonts.display(18, color: AppColors.textOnPrimary)),
                       Padding(padding: const EdgeInsets.only(bottom: Sp.sm),
-                          child: Text(selected.pronunciation, style: Fonts.body(16, w: FontWeight.w600, color: AppColors.textOnPrimary.withOpacity(0.9)))),
+                          child: Text(selected.anchor.isEmpty ? selected.pronunciation : MT.soundsLike(selected.anchor),
+                              style: Fonts.body(16, w: FontWeight.w600, color: AppColors.textOnPrimary.withOpacity(0.9)))),
                       GestureDetector(
                         onTap: () => speakHindi(selected.vowelBase, rate: 0.6),
                         child: Container(
@@ -66,7 +68,7 @@ class _MatraScreenState extends State<MatraScreen> {
                           decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(9999),
                               boxShadow: toyShadow(AppColors.toyShadowColor, 3)),
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Icon(Icons.volume_up, size: 18, color: AppColors.primary),
+                            Icon(Icons.volume_up, size: 18, color: AppColors.primary),
                             const SizedBox(width: Sp.xs),
                             Text('Listen', style: Fonts.body(12, w: FontWeight.w800, color: AppColors.primary)),
                           ]),
@@ -75,6 +77,15 @@ class _MatraScreenState extends State<MatraScreen> {
                     ])),
                   ]),
                 ),
+              ),
+              if (selected.hinglish.isNotEmpty) Padding(
+                padding: const EdgeInsets.only(top: Sp.md),
+                child: ToyCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('📍 ${MT.placeHint(selected.symbol, selected.position)}', style: Fonts.body(15, w: FontWeight.w700)),
+                  const SizedBox(height: Sp.xs),
+                  Text('🔤 ${MT.hinglishTip}: ${selected.hinglish}',
+                      style: Fonts.body(14, w: FontWeight.w500, color: AppColors.textSecondary)),
+                ])),
               ),
               label('Consonant + ${selected.symbol}'),
               Wrap(spacing: Sp.sm, runSpacing: Sp.sm + 4, children: [for (final c in combos) _combo(c)]),
@@ -92,7 +103,7 @@ class _MatraScreenState extends State<MatraScreen> {
                           Text(ex['word']!, style: Fonts.hindi(28, height: 40 / 28)),
                           Text(ex['meaning']!, style: Fonts.body(16, w: FontWeight.w600, color: AppColors.textSecondary)),
                         ])),
-                        const Icon(Icons.volume_up_outlined, size: 20, color: AppColors.primary),
+                        Icon(Icons.volume_up_outlined, size: 20, color: AppColors.primary),
                       ]),
                     ),
                   ),
@@ -147,7 +158,7 @@ class _MatraScreenState extends State<MatraScreen> {
             const SizedBox(width: 6),
             Text(c.romanized, style: Fonts.body(12, w: FontWeight.w600, color: AppColors.textSecondary)),
             const SizedBox(width: 4),
-            const Icon(Icons.volume_down, size: 14, color: AppColors.textSecondary),
+            Icon(Icons.volume_down, size: 14, color: AppColors.textSecondary),
           ]),
         ),
       );

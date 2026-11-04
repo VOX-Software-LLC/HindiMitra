@@ -104,7 +104,7 @@ class _DictationScreenState extends State<DictationScreen> {
   @override
   Widget build(BuildContext context) {
     size = (MediaQuery.of(context).size.width - Sp.md * 2).clampD(200.0, 350.0);
-    Widget scaffold(Widget body) => Scaffold(backgroundColor: AppColors.background, body: SafeArea(bottom: false, child: body));
+    Widget scaffold(Widget body) => Scaffold(backgroundColor: Colors.transparent, body: SafeArea(bottom: false, child: body));
     if (sessionComplete) return scaffold(_complete());
     final letter = _letter;
     return scaffold(Column(children: [
@@ -121,7 +121,7 @@ class _DictationScreenState extends State<DictationScreen> {
                 onTap: () { if (letter != null) speakHindi(letter.character, rate: _rate); },
                 child: Container(width: 96, height: 96,
                     decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle, boxShadow: toyShadow(AppColors.primaryDark, 6)),
-                    child: const Icon(Icons.volume_up, size: 46, color: AppColors.textOnPrimary)),
+                    child: Icon(Icons.volume_up, size: 46, color: AppColors.textOnPrimary)),
               ),
               const SizedBox(height: Sp.sm),
               Text('Tap to hear again', style: Fonts.body(14, w: FontWeight.w700, color: AppColors.textSecondary)),
@@ -183,6 +183,10 @@ class _DictationScreenState extends State<DictationScreen> {
             ])),
           ),
           const SizedBox(height: Sp.md),
+          if (r.accuracy < kTipsThreshold) Padding(
+            padding: const EdgeInsets.only(bottom: Sp.sm),
+            child: ImprovementPanel(tips: improvementTips(r, letter?.character ?? '', otherLetter: lookedLike)),
+          ),
           ScoreBreakdown(r),
         ]),
       ),

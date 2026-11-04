@@ -8,7 +8,6 @@ import '../../theme/palette.dart';
 import '../../widgets/menu_tiles.dart';
 import '../../widgets/common.dart';
 import '../../widgets/icons.dart';
-import '../app_shell.dart';
 
 const _levelColors = [
   Color(0xFFFF6B6B), Color(0xFFFF9F43), Color(0xFFFECA57), Color(0xFF48DBFB), Color(0xFF0ABDE3),
@@ -36,7 +35,7 @@ class _ReadingMenuScreenState extends State<ReadingMenuScreen> {
     if (a.isPremium && !s.isPremium) {
       showInfoDialog(context, 'Premium Feature 🔒',
           '"${a.title}" is a Premium feature! Upgrade to unlock all levels.',
-          actions: [('Not Now', null), ('View Plans', () => AppShell.of(context)?.goTo(4))]);
+          actions: [('Not Now', null), ('View Plans', () => openScreen(context, 'Paywall'))]);
       return;
     }
     openScreen(context, a.screen, {
@@ -53,7 +52,7 @@ class _ReadingMenuScreenState extends State<ReadingMenuScreen> {
         ));
     final s = context.read<AppStore>();
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
         child: screenScroll(
@@ -68,7 +67,7 @@ class _ReadingMenuScreenState extends State<ReadingMenuScreen> {
             const SizedBox(height: Sp.sm),
             for (final a in AppData.readingActivities) _accordion(a, s),
             Padding(padding: const EdgeInsets.symmetric(vertical: Sp.lg), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Icon(Icons.auto_awesome_outlined, size: 20, color: AppColors.textMuted), const SizedBox(width: Sp.sm),
+              Icon(Icons.auto_awesome_outlined, size: 20, color: AppColors.textMuted), const SizedBox(width: Sp.sm),
               Flexible(child: Text('More stories and grammar games coming soon!', style: Fonts.body(12, color: AppColors.textMuted))),
             ])),
           ]),

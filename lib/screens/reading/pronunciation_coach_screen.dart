@@ -105,7 +105,7 @@ class _PronunciationCoachScreenState extends State<PronunciationCoachScreen> wit
                   decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.09), borderRadius: BorderRadius.circular(9999),
                       border: Border.all(color: AppColors.primary.withOpacity(0.33))),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.volume_up, size: 20, color: AppColors.primary), const SizedBox(width: Sp.sm),
+                    Icon(Icons.volume_up, size: 20, color: AppColors.primary), const SizedBox(width: Sp.sm),
                     Text('Listen First', style: Fonts.body(14, w: FontWeight.w800, color: AppColors.primaryDark)),
                   ]),
                 ),
@@ -118,7 +118,7 @@ class _PronunciationCoachScreenState extends State<PronunciationCoachScreen> wit
             decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(Rad.xl),
                 border: Border.all(color: AppColors.border), boxShadow: toyShadow(AppColors.toyShadowColor, 3)),
             child: Row(children: [
-              const Icon(Icons.info_outline, size: 18, color: AppColors.primary), const SizedBox(width: Sp.sm),
+              Icon(Icons.info_outline, size: 18, color: AppColors.primary), const SizedBox(width: Sp.sm),
               Expanded(child: Text('Live on-device speech recognition — speak clearly in a quiet room for the best score.',
                   style: Fonts.body(12, color: AppColors.textSecondary, height: 18 / 12))),
             ]),
@@ -141,7 +141,7 @@ class _PronunciationCoachScreenState extends State<PronunciationCoachScreen> wit
             onTap: _start,
             child: Container(width: 88, height: 88,
                 decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle, boxShadow: toyShadow(AppColors.primaryDark, 6)),
-                child: const Icon(Icons.mic, size: 36, color: AppColors.textOnPrimary)),
+                child: Icon(Icons.mic, size: 36, color: AppColors.textOnPrimary)),
           ),
           const SizedBox(height: Sp.md),
           Text('Tap to start speaking', style: Fonts.body(12, color: AppColors.textMuted)),
@@ -162,7 +162,7 @@ class _PronunciationCoachScreenState extends State<PronunciationCoachScreen> wit
               return Transform.scale(scale: 1 + 0.2 * Curves.easeInOut.transform(t), child: Container(
                 width: 88, height: 88,
                 decoration: BoxDecoration(color: AppColors.error, shape: BoxShape.circle, boxShadow: toyShadow(const Color(0xFFA32E1E), 6)),
-                child: const Icon(Icons.mic, size: 36, color: AppColors.textOnPrimary)));
+                child: Icon(Icons.mic, size: 36, color: AppColors.textOnPrimary)));
             },
           )),
           const SizedBox(height: Sp.md),
@@ -172,7 +172,7 @@ class _PronunciationCoachScreenState extends State<PronunciationCoachScreen> wit
         ]);
       case _Coach.evaluating:
         return Column(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.hourglass_empty, size: 36, color: AppColors.primary),
+          Icon(Icons.hourglass_empty, size: 36, color: AppColors.primary),
           const SizedBox(height: Sp.md),
           Text('Analyzing pronunciation...', style: Fonts.body(16, color: AppColors.textSecondary)),
         ]);
@@ -214,7 +214,7 @@ class _PronunciationCoachScreenState extends State<PronunciationCoachScreen> wit
                 padding: const EdgeInsets.symmetric(vertical: Sp.md),
                 decoration: BoxDecoration(borderRadius: BorderRadius.circular(9999), border: Border.all(color: AppColors.primary, width: 2)),
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.refresh, size: 18, color: AppColors.primary), const SizedBox(width: Sp.xs),
+                  Icon(Icons.refresh, size: 18, color: AppColors.primary), const SizedBox(width: Sp.xs),
                   Text('Try Again', style: Fonts.body(16, w: FontWeight.w800, color: AppColors.primary)),
                 ]),
               ),
@@ -230,7 +230,7 @@ class _PronunciationCoachScreenState extends State<PronunciationCoachScreen> wit
                 decoration: BoxDecoration(gradient: toneGradient(AppColors.primary), borderRadius: BorderRadius.circular(9999), boxShadow: toyShadow(AppColors.primaryDark, 6)),
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Text('Next', style: Fonts.body(16, w: FontWeight.w800, color: AppColors.textOnPrimary)), const SizedBox(width: Sp.xs),
-                  const Icon(Icons.arrow_forward, size: 18, color: AppColors.textOnPrimary),
+                  Icon(Icons.arrow_forward, size: 18, color: AppColors.textOnPrimary),
                 ]),
               ),
             )),

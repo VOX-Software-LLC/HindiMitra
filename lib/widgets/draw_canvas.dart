@@ -37,9 +37,11 @@ class DrawCanvas extends StatelessWidget {
   final List<Widget> topOverlays; // chips etc.
   final Color strokeColor;
   final double strokeWidth;
+  /// Ruling: 'copybook' (header + base line), 'grid' or 'plain'.
+  final String board;
   const DrawCanvas({super.key, required this.controller, required this.size, this.showGuideLines = true,
       this.overlays = const [], this.topOverlays = const [],
-      this.strokeColor = AppColors.canvasStroke, this.strokeWidth = 6});
+      this.strokeColor = AppColors.canvasStroke, this.strokeWidth = 6, this.board = 'copybook'});
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +57,7 @@ class DrawCanvas extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(children: [
-        Positioned.fill(child: CustomPaint(painter: _GridPainter(showGuideLines))),
+        Positioned.fill(child: CustomPaint(painter: _GridPainter(showGuideLines ? board : 'plain'))),
         ...overlays,
         Positioned.fill(child: DrawSurface(
           controller: controller,
@@ -69,14 +71,30 @@ class DrawCanvas extends StatelessWidget {
 }
 
 class _GridPainter extends CustomPainter {
-  final bool on;
-  _GridPainter(this.on);
+  final String board;
+  _GridPainter(this.board);
   @override
   void paint(Canvas c, Size s) {
-    if (on) WritingGuidePainter.paintGuides(c, s);
+    if (board == 'copybook') WritingGuidePainter.paintGuides(c, s);
+    if (board == 'grid') paintGrid(c, s);
   }
   @override
-  bool shouldRepaint(covariant _GridPainter o) => o.on != on;
+  bool shouldRepaint(covariant _GridPainter o) => o.board != board;
+}
+
+/// Square practice grid with a stronger centre cross, for boards set to 'grid'.
+void paintGrid(Canvas c, Size s) {
+  final thin = Paint()..color = AppColors.canvasGridLine.withOpacity(0.55)..strokeWidth = 1;
+  final step = s.width / 8;
+  for (int i = 1; i < 8; i++) {
+    c.drawLine(Offset(step * i, 0), Offset(step * i, s.height), thin);
+  }
+  for (double y = step; y < s.height; y += step) {
+    c.drawLine(Offset(0, y), Offset(s.width, y), thin);
+  }
+  final cross = Paint()..color = AppColors.border..strokeWidth = 1.6;
+  c.drawLine(Offset(s.width / 2, 0), Offset(s.width / 2, s.height), cross);
+  c.drawLine(Offset(0, s.height / 2), Offset(s.width, s.height / 2), cross);
 }
 
 /// Where the header line (शिरोरेखा) and the base line sit, as fractions of
@@ -169,17 +187,19 @@ class StrokePainterPublic extends CustomPainter {
 class SimpleCanvas extends StatelessWidget {
   final DrawController controller; final double size; final Color stroke; final double strokeWidth; final bool midLine;
   final Widget? underlay; final double radius; final double? height;
+  /// Ruling when [midLine] is on: 'copybook', 'grid' or 'plain'.
+  final String board;
   const SimpleCanvas({super.key, required this.controller, required this.size, this.stroke = AppColors.canvasStroke,
-      this.strokeWidth = 5, this.midLine = true, this.underlay, this.radius = Rad.xl, this.height});
+      this.strokeWidth = 5, this.midLine = true, this.underlay, this.radius = Rad.xl, this.height, this.board = 'copybook'});
   @override
   Widget build(BuildContext context) => Container(
         width: size, height: height ?? size,
         decoration: BoxDecoration(color: AppColors.canvasBackground, borderRadius: BorderRadius.circular(radius),
             border: Border.all(color: AppColors.border),
-            boxShadow: const [BoxShadow(color: AppColors.toyShadowColor, offset: Offset(0, 4), blurRadius: 0)]),
+            boxShadow: [BoxShadow(color: AppColors.toyShadowColor, offset: Offset(0, 4), blurRadius: 0)]),
         clipBehavior: Clip.antiAlias,
         child: Stack(children: [
-          if (midLine) const Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: WritingGuidePainter()))),
+          if (midLine) Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _GridPainter(board)))),
           if (underlay != null) Positioned.fill(child: IgnorePointer(child: underlay!)),
           Positioned.fill(child: DrawSurface(
             controller: controller,
@@ -187,4 +207,17 @@ class SimpleCanvas extends StatelessWidget {
           )),
         ]),
       );
+}
+
+/// Strokes scaled to 0-1 of [size], about 40 points each with 3 decimals:
+/// small enough to keep with a homework attempt for a parent to review.
+List<List<double>> normalizeStrokes(List<List<Offset>> strokes, double size) {
+  double r(double v) => (v / size).clamp(0.0, 1.0) * 1000 ~/ 1 / 1000;
+  return [
+    for (final s in strokes)
+      if (s.isNotEmpty) [
+        for (int i = 0; i < s.length; i += (s.length / 40).ceil().clamp(1, 1 << 20)) ...[r(s[i].dx), r(s[i].dy)],
+        r(s.last.dx), r(s.last.dy),
+      ],
+  ];
 }

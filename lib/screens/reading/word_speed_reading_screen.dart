@@ -148,7 +148,7 @@ class _WordSpeedReadingScreenState extends State<WordSpeedReadingScreen> {
               ])),
             ]))
           : Column(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.visibility_off_outlined, size: 48, color: AppColors.textMuted),
+              Icon(Icons.visibility_off_outlined, size: 48, color: AppColors.textMuted),
               const SizedBox(height: Sp.md),
               Text('What did you read?', style: Fonts.display(20, color: AppColors.textSecondary, w: FontWeight.w700)),
             ])))),

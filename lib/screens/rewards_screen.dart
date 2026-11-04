@@ -54,7 +54,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
     final maxW = w >= 1440 ? 1100.0 : w >= 1024 ? 960.0 : w >= 768 ? 720.0 : w;
     final shown = badgeDefs.where((d) => category == 'All' || d.category == category).toList();
     final earnedCount = badgeDefs.where((d) => d.earned(s)).length;
-    return Container(color: AppColors.background, child: SafeArea(bottom: false, child: Stack(children: [
+    return Container(color: Colors.transparent, child: SafeArea(bottom: false, child: Stack(children: [
       SingleChildScrollView(padding: const EdgeInsets.all(Sp.md), child: Center(child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxW),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -159,7 +159,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                 maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
                 style: Fonts.body(11, w: FontWeight.w800, color: earned ? AppColors.success : AppColors.primaryDark)),
           ]),
-          if (pinned) const Positioned(top: 0, right: 0, child: Icon(Icons.push_pin, size: 16, color: AppColors.primary)),
+          if (pinned) Positioned(top: 0, right: 0, child: Icon(Icons.push_pin, size: 16, color: AppColors.primary)),
         ]),
       ),
     );

@@ -5,6 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hindi_mitra/data/models.dart';
 import 'package:hindi_mitra/routes.dart';
 import 'package:hindi_mitra/screens/home_screen.dart';
+import 'package:hindi_mitra/screens/intro_screen.dart';
+import 'package:hindi_mitra/screens/learn_screen.dart';
+import 'package:hindi_mitra/screens/practice_screen.dart';
+import 'package:hindi_mitra/screens/test_screen.dart';
+import 'package:hindi_mitra/screens/translation_screen.dart';
+import 'package:hindi_mitra/screens/upcoming_screen.dart';
 import 'package:hindi_mitra/screens/onboarding_screen.dart';
 import 'package:hindi_mitra/screens/profile_screen.dart';
 import 'package:hindi_mitra/screens/reading/reading_menu_screen.dart';
@@ -28,6 +34,12 @@ void main() {
   final screens = <String, Widget Function()>{
     'Onboarding': () => const OnboardingScreen(),
     'Home': () => const HomeScreen(),
+    'Intro': () => IntroScreen(onContinue: () {}),
+    'Learn': () => const LearnScreen(),
+    'Practice': () => const PracticeScreen(),
+    'Test': () => const TestScreen(),
+    'Upcoming': () => const UpcomingScreen(),
+    'Translation': () => const TranslationScreen(),
     'WriteMenu': () => const WritingMenuScreen(),
     'ReadMenu': () => const ReadingMenuScreen(),
     'Rewards': () => const RewardsScreen(),

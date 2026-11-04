@@ -6,6 +6,8 @@ import '../theme/app_theme.dart';
 import '../theme/palette.dart';
 import '../widgets/common.dart';
 import '../widgets/progress_bar.dart';
+import 'matra/matra_level_screen.dart';
+import 'matra/matra_text.dart';
 
 /// ParentDashboardScreen.tsx (the Profile-stack version that reads the local store)
 class ParentDashboardScreen extends StatelessWidget {
@@ -36,12 +38,12 @@ class ParentDashboardScreen extends StatelessWidget {
     final s = context.read<AppStore>();
     final total = AppData.allLetters.length;
 
-    return Scaffold(backgroundColor: AppColors.background, body: SafeArea(bottom: false, child: Column(children: [
+    return Scaffold(backgroundColor: Colors.transparent, body: SafeArea(bottom: false, child: Column(children: [
       Padding(padding: const EdgeInsets.symmetric(horizontal: Sp.md, vertical: Sp.sm), child: Row(children: [
         GestureDetector(onTap: () => Navigator.of(context).maybePop(), child: Container(
           width: 40, height: 40,
           decoration: BoxDecoration(color: AppColors.surface, shape: BoxShape.circle, border: Border.all(color: AppColors.border)),
-          child: const Icon(Icons.chevron_left, size: 24, color: AppColors.textPrimary))),
+          child: Icon(Icons.chevron_left, size: 24, color: AppColors.textPrimary))),
         Expanded(child: Column(children: [
           Text('Parent Dashboard', style: Fonts.display(20, color: AppColors.textPrimary, w: FontWeight.w800)),
           Text('अभिभावक डैशबोर्ड', style: Fonts.body(12, color: AppColors.textSecondary)),
@@ -50,7 +52,7 @@ class ParentDashboardScreen extends StatelessWidget {
       ])),
       Expanded(child: !isPremium ? _gate() : screenScroll(padding: const EdgeInsets.all(Sp.md), maxWidth: 720, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _card(Row(children: [
-          Container(width: 48, height: 48, alignment: Alignment.center, decoration: const BoxDecoration(color: AppColors.primaryDark, shape: BoxShape.circle),
+          Container(width: 48, height: 48, alignment: Alignment.center, decoration: BoxDecoration(color: AppColors.primaryDark, shape: BoxShape.circle),
               child: Text(s.userName.isEmpty ? '' : s.userName[0].toUpperCase(), style: Fonts.display(20, color: AppColors.textOnPrimary, w: FontWeight.w800))),
           const SizedBox(width: Sp.md),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -88,6 +90,21 @@ class ParentDashboardScreen extends StatelessWidget {
           HsProgressBar(progress: total == 0 ? 0 : started / total, height: 6, color: AppColors.primary),
         ])),
         const SizedBox(height: Sp.lg),
+        _section(MT.parentsCorner),
+        _card(Builder(builder: (_) {
+          final done = s.activityProgress[matraActivityId] ?? 0;
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            _mrow(MT.course, '$done/10'),
+            const SizedBox(height: Sp.sm),
+            HsProgressBar(progress: done / 10, height: 8, color: AppColors.primary),
+            const SizedBox(height: Sp.sm),
+            _mrow(MT.matrasIKnow(matrasKnownAfter(done)), done >= 10 ? '🏆' : MT.levelN(done + 1)),
+            const SizedBox(height: Sp.sm),
+            Text('💡 ${MT.parentTip(done >= 10 ? 10 : done + 1)}',
+                style: Fonts.body(14, color: AppColors.textSecondary, height: 20 / 14)),
+          ]);
+        })),
+        const SizedBox(height: Sp.lg),
         _section('Activity Summary'),
         _card(Column(children: [
           _arow(Icons.create_outlined, 'Total Practice Sessions', '$totalSessions'), const SizedBox(height: Sp.md),
@@ -101,7 +118,7 @@ class ParentDashboardScreen extends StatelessWidget {
           decoration: BoxDecoration(color: AppColors.primary.withAlpha(0x15), borderRadius: BorderRadius.circular(Rad.xl),
               border: Border.all(color: AppColors.primary.withAlpha(0x30)), boxShadow: toyShadow(AppColors.toyShadowColor, 4)),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Icon(Icons.lightbulb_outline, size: 22, color: AppColors.primaryDark), const SizedBox(width: Sp.md),
+            Icon(Icons.lightbulb_outline, size: 22, color: AppColors.primaryDark), const SizedBox(width: Sp.md),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Tips for Parents', style: Fonts.display(14, color: AppColors.primaryDark, w: FontWeight.w700)),
               const SizedBox(height: Sp.xs),

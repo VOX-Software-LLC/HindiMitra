@@ -17,8 +17,15 @@
 
 HindiMitra (*mitra* = friend) is a Flutter app that teaches the Devanagari script through guided letter
 tracing, quizzes, flashcards, story reading and games. It is a Flutter port of the React Native (Expo) app
-*Hindi Sikho* and keeps the same "Little Hindi"  There are five tabs:
-Home · Write · Read · Rewards · Profile.
+*Hindi Sikho* and keeps the same "Little Hindi" design: cream `#FCF9EE`, marigold `#EE9A4C`, violet `#6E4EDF`,
+solid offset "toy" shadows, and Baloo 2 / Nunito / Tiro Devanagari Hindi fonts. There are five tabs:
+Home · Learn (Write + Read) · Practice · Test · Upcoming. The profile menu on Home (tap the avatar) holds the score,
+profile, rewards, leaderboard, switch learner, parent zone, settings and help.
+
+Every launch opens on an India intro (tricolour, Ashoka Chakra, "Made in India", "Developed by VoxCRE"). Settings has nine themes (Sunny Day, Starry Night, Tiranga, Web Hero, Night Guardian, Ocean, Jungle, Space,
+Candy; defined in `lib/theme/themes.dart`), the app language (English and Hindi, more listed as coming soon), and the
+user's name in Hindi with a ⓘ to correct the automatic spelling. All levels are open (`unlockAll` in
+`lib/data/models.dart`).
 
 ## Features
 
@@ -54,6 +61,18 @@ dart run flutter_launcher_icons
 The web icons and favicon are in `web/icons/` and `web/favicon.png`. The README image is
 `docs/hindimitra-tile.png`.
 
+### Run locally as a web app
+
+`flutter run -d web-server` needs the Dart Debug Chrome extension and otherwise stays on a blank page, so for a
+quick local run build once and serve the output:
+
+```bash
+flutter build web --release
+python -m http.server 8765 --directory build/web --bind 127.0.0.1   # open http://127.0.0.1:8765
+```
+
+After rebuilding, hard-refresh the page (Ctrl+Shift+R) so the browser doesn't keep the old `main.dart.js`.
+
 ### Production web build
 
 ```bash
@@ -72,7 +91,8 @@ frame (`Fonts.preload()`), so the app works offline and text never jumps from a 
 
 ### Tests
 `flutter test` runs the stroke-grading tests plus `test/layout_overflow_test.dart`, which opens every screen at
-320×568, 360×690 and 412×915 with a 1.2× system font and fails on any overflow.
+320×568, 360×690 and 412×915 with a 1.2× system font and fails on any overflow, and `test/layout_wide_test.dart`,
+which does the same at 800×900 and 1280×900.
 
 ## Project layout
 
@@ -93,6 +113,34 @@ assets/                data/*.json, audio/*.mp3, images/*
 docs/                  README images
 ```
 
+## Cloud (Firebase)
+
+The app is local-first: it runs fully offline, and `lib/services/cloud.dart` connects to Firebase when it is
+configured (it logs `Cloud: offline (…)` otherwise). To connect a Firebase project:
+
+1. In the [Firebase console](https://console.firebase.google.com), create a project and a Cloud Firestore
+   database in **asia-south1 (Mumbai)**, production mode.
+2. Sign in and link the project (needs the Firebase CLI, `npm i -g firebase-tools`, and the FlutterFire CLI,
+   `dart pub global activate flutterfire_cli`):
+   ```bash
+   firebase login
+   flutterfire configure --project=<your-project-id> --platforms=android,ios,web
+   firebase use <your-project-id>
+   ```
+   `flutterfire configure` replaces the placeholder `lib/firebase_options.dart` with the project's keys.
+3. Deploy the security rules (everything is locked until the account rules land):
+   `firebase deploy --only firestore:rules`
+
+To try sign-in and backup without a real project, run the local emulators with the demo project, then the
+app with `USE_FIREBASE_EMULATOR` (the `flutter-web-emulator` entry in `.claude/launch.json` does the second step):
+
+```bash
+firebase emulators:start --project demo-hindimitra --only auth,firestore
+flutter run -d chrome --dart-define=USE_FIREBASE_EMULATOR=true
+```
+
+The emulators enforce `firestore.rules`; the Emulator UI is at http://127.0.0.1:4000.
+
 ## Not included yet
 
 The original app ran on a live Firebase project. HindiMitra currently reproduces its **offline mode** (straight
@@ -108,8 +156,6 @@ to Onboarding → student app, the same as "Continue as Guest"). Not included:
 * Contact sales opens a pre-filled e-mail instead of calling a backend.
 * Reminder notifications repeat at the chosen time of day in **UTC** terms (no timezone plugin), so the hour
   can drift by one across DST changes.
-* Colours are compile-time constants (light theme); the dark-theme preference is stored but only the Material
-  chrome follows it.
 
 ## Known quirks (kept to match the original)
 

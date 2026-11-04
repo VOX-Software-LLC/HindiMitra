@@ -118,7 +118,7 @@ class _NumbersScreenState extends State<NumbersScreen> {
               child: Container(width: 48, height: 48,
                   decoration: BoxDecoration(color: Colors.white.withOpacity(0.22), shape: BoxShape.circle,
                       border: Border.all(color: Colors.white.withOpacity(0.35))),
-                  child: const Icon(Icons.volume_up, size: 22, color: AppColors.textOnPrimary)),
+                  child: Icon(Icons.volume_up, size: 22, color: AppColors.textOnPrimary)),
             ),
           ]),
         ),
@@ -165,7 +165,7 @@ class _NumbersScreenState extends State<NumbersScreen> {
             padding: const EdgeInsets.symmetric(horizontal: Sp.xl, vertical: Sp.md),
             decoration: BoxDecoration(gradient: toneGradient(AppColors.primary), borderRadius: BorderRadius.circular(9999), boxShadow: toyShadow(AppColors.primaryDark, 6)),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.refresh, size: 18, color: AppColors.textOnPrimary), const SizedBox(width: Sp.sm),
+              Icon(Icons.refresh, size: 18, color: AppColors.textOnPrimary), const SizedBox(width: Sp.sm),
               Text('Try Again', style: Fonts.body(16, w: FontWeight.w800, color: AppColors.textOnPrimary)),
             ]),
           ),

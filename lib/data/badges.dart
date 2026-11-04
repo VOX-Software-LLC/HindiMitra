@@ -36,11 +36,11 @@ BadgeProgress _count(int done, int goal, String unit, String verb, [String? unit
 int _masteredVowels(AppStore s) => AppData.vowels.where((v) => s.letterProgress[v.id]?.mastered == true).length;
 
 final List<BadgeDef> badgeDefs = [
-  BadgeDef(const BadgeInfo('first-letter', 'First Letter', 'पहला अक्षर', 'Complete your first letter practice', 'ribbon', AppColors.primary),
+  BadgeDef(BadgeInfo('first-letter', 'First Letter', 'पहला अक्षर', 'Complete your first letter practice', 'ribbon', AppColors.primary),
       'Writing', (s) => _count(s.totalStars > 0 ? 1 : 0, 1, 'letter', 'Practise')),
   BadgeDef(const BadgeInfo('vowel-master', 'Vowel Master', 'स्वर गुरु', 'Master all 13 vowels', 'medal', AppColors.readingModule),
       'Writing', (s) => _count(_masteredVowels(s), AppData.vowels.length, 'vowel', 'Master')),
-  BadgeDef(const BadgeInfo('speed-writer', 'Speed Writer', 'तेज़ लेखक', 'Complete a letter in under 30s', 'flash', AppColors.secondary),
+  BadgeDef(BadgeInfo('speed-writer', 'Speed Writer', 'तेज़ लेखक', 'Complete a letter in under 30s', 'flash', AppColors.secondary),
       'Writing', (s) => const BadgeProgress(0, 1, 'Coming soon', tracked: false)),
   BadgeDef(const BadgeInfo('perfect-score', 'Perfect Score', 'पूर्ण अंक', '3 stars on all 4 stages', 'diamond', _violet),
       'Writing', (s) => const BadgeProgress(0, 1, 'Coming soon', tracked: false)),
@@ -48,7 +48,7 @@ final List<BadgeDef> badgeDefs = [
       'Writing', (s) => _count(s.letterProgress.length, 25, 'letter', 'Practise')),
   BadgeDef(const BadgeInfo('word-wizard', 'Word Wizard', 'शब्द जादूगर', 'Build 20 words correctly', 'construct', Color(0xFF00897B)),
       'Writing', (s) => const BadgeProgress(0, 20, 'Coming soon', tracked: false)),
-  BadgeDef(const BadgeInfo('streak-7', 'Streak 7', '7 दिन की लय', '7-day practice streak', 'flame', AppColors.primary),
+  BadgeDef(BadgeInfo('streak-7', 'Streak 7', '7 दिन की लय', '7-day practice streak', 'flame', AppColors.primary),
       'Streaks', (s) => _count(s.currentStreak, 7, 'day', 'Practise')),
   BadgeDef(const BadgeInfo('streak-30', 'Monthly Streak', '30 दिन की लय', '30-day practice streak!', 'bonfire', Color(0xFFE65100)),
       'Streaks', (s) => _count(s.currentStreak, 30, 'day', 'Practise')),
@@ -64,7 +64,7 @@ final List<BadgeDef> badgeDefs = [
       'Milestones', (s) => _count(s.totalStars, 500, 'star', 'Earn')),
   BadgeDef(const BadgeInfo('reading-star', 'Reading Star', 'पठन सितारा', 'Complete 10 reading activities', 'book', AppColors.readingModule),
       'Milestones', (s) => _count(s.todayPracticeCount, 10, 'activity', 'Complete', 'activities')),
-  BadgeDef(const BadgeInfo('1000-points', 'Point Master', 'अंक राजा', 'Earn 1000 points', 'trophy', AppColors.secondary),
+  BadgeDef(BadgeInfo('1000-points', 'Point Master', 'अंक राजा', 'Earn 1000 points', 'trophy', AppColors.secondary),
       'Milestones', (s) => _count(s.totalPoints, 1000, 'point', 'Earn')),
 ];
 

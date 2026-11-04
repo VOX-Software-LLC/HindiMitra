@@ -111,7 +111,7 @@ class SectionTile extends StatelessWidget {
                 if (locked) Container(
                   margin: const EdgeInsets.only(right: 6), padding: const EdgeInsets.all(5),
                   decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.lock_rounded, size: 13, color: AppColors.secondary),
+                  child: Icon(Icons.lock_rounded, size: 13, color: AppColors.secondary),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -120,7 +120,7 @@ class SectionTile extends StatelessWidget {
                 ),
                 AnimatedRotation(
                   turns: open ? 0.5 : 0, duration: const Duration(milliseconds: 220),
-                  child: const Icon(Icons.keyboard_arrow_down_rounded, size: 26, color: AppColors.textSecondary),
+                  child: Icon(Icons.keyboard_arrow_down_rounded, size: 26, color: AppColors.textSecondary),
                 ),
               ]),
             ),

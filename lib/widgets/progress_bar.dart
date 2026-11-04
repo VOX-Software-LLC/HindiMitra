@@ -6,9 +6,11 @@ import '../util/num_ext.dart';
 class HsProgressBar extends StatelessWidget {
   final double progress, height;
   final bool showLabel;
-  final Color color, background;
+  final Color color;
+  final Color? _background;
+  Color get background => _background ?? AppColors.muted;
   const HsProgressBar({super.key, required this.progress, this.height = 14,
-      this.showLabel = false, this.color = AppColors.success, this.background = AppColors.muted});
+      this.showLabel = false, this.color = AppColors.success, Color? background}) : _background = background;
   @override
   Widget build(BuildContext context) {
     final p = progress.clampD(0.0, 1.0);

@@ -51,7 +51,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
     final tierPlans = plansForTier(tier);
     final selected = tierPlans.firstWhere((p) => p.cycle == cycle, orElse: () => tierPlans.first);
 
-    return Scaffold(backgroundColor: AppColors.background, body: SafeArea(bottom: false, child: screenScroll(
+    return Scaffold(backgroundColor: Colors.transparent, body: SafeArea(bottom: false, child: screenScroll(
       maxWidth: 720, padding: const EdgeInsets.all(Sp.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -59,7 +59,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
             width: 40, height: 40,
             decoration: BoxDecoration(color: AppColors.surface, shape: BoxShape.circle, border: Border.all(color: AppColors.border),
                 boxShadow: toyShadow(AppColors.toyShadowColor, 3)),
-            child: const Icon(Icons.chevron_left, size: 24, color: AppColors.textPrimary))),
+            child: Icon(Icons.chevron_left, size: 24, color: AppColors.textPrimary))),
           const SizedBox(width: Sp.sm),
           Expanded(child: Text('Unlock everything', style: Fonts.display(28, color: AppColors.textPrimary, w: FontWeight.w800))),
         ]),
@@ -112,11 +112,11 @@ class _PaywallScreenState extends State<PaywallScreen> {
             margin: const EdgeInsets.only(top: Sp.md), padding: const EdgeInsets.symmetric(vertical: Sp.md),
             decoration: BoxDecoration(gradient: toneGradient(AppColors.primary), borderRadius: BorderRadius.circular(9999), boxShadow: toyShadow(AppColors.primaryDark, 6)),
             child: purchasing
-                ? const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textOnPrimary)))
+                ? Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textOnPrimary)))
                 : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                     Text('Start subscription', style: Fonts.body(16, w: FontWeight.w800, color: AppColors.textOnPrimary)),
                     const SizedBox(width: Sp.xs),
-                    const Icon(Icons.arrow_forward, size: 18, color: AppColors.textOnPrimary),
+                    Icon(Icons.arrow_forward, size: 18, color: AppColors.textOnPrimary),
                   ]),
           ),
         )),

@@ -39,10 +39,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     final rank = sorted.indexWhere((e) => e.isMe) + 1;
     final medals = [Palette.light.sunny, Palette.light.purple, Palette.light.pink];
 
-    return Scaffold(backgroundColor: AppColors.background, body: SafeArea(bottom: false, child: Column(children: [
+    return Scaffold(backgroundColor: Colors.transparent, body: SafeArea(bottom: false, child: Column(children: [
       Padding(padding: const EdgeInsets.symmetric(horizontal: Sp.md, vertical: Sp.sm), child: Row(children: [
         SizedBox(width: 40, height: 40, child: IconButton(padding: EdgeInsets.zero,
-            icon: const Icon(Icons.chevron_left, size: 24, color: AppColors.textPrimary), onPressed: () => Navigator.of(context).maybePop())),
+            icon: Icon(Icons.chevron_left, size: 24, color: AppColors.textPrimary), onPressed: () => Navigator.of(context).maybePop())),
         Expanded(child: Column(children: [
           Text('Leaderboard', style: Fonts.display(20, color: AppColors.textPrimary, w: FontWeight.w800)),
           Text('लीडरबोर्ड', style: Fonts.hindi(12, color: AppColors.textSecondary)),
@@ -111,7 +111,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         child: Row(children: [
           SizedBox(width: 36, child: Center(child: i < 3
               ? Container(width: 34, height: 34, decoration: BoxDecoration(color: medals[i], shape: BoxShape.circle, boxShadow: toyShadow(AppColors.toyShadowColor, 3)),
-                  child: const Icon(Icons.emoji_events, size: 16, color: AppColors.textOnPrimary))
+                  child: Icon(Icons.emoji_events, size: 16, color: AppColors.textOnPrimary))
               : Text('${i + 1}', style: Fonts.body(16, w: FontWeight.w700, color: AppColors.textSecondary)))),
           const SizedBox(width: Sp.sm),
           Container(width: 36, height: 36, alignment: Alignment.center,

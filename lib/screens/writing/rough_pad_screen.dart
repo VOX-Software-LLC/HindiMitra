@@ -45,7 +45,7 @@ class _RoughPadScreenState extends State<RoughPadScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         body: SafeArea(bottom: false, child: Column(children: [
           HeaderBar(title: 'Rough Page', subtitle: 'रफ़ पन्ना · free practice', onBack: () => Navigator.of(context).maybePop()),
           SizedBox(

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../data/accounts.dart';
+import '../l10n.dart';
+import '../routes.dart';
+import 'accounts/code_pad.dart';
 import '../services/feedback.dart';
 import '../store/app_store.dart';
 import '../theme/app_theme.dart';
@@ -43,17 +47,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
         ),
       ));
 
-  void _finish() {
+  Future<void> _finish() async {
     hapticSuccess();
+    final s = context.read<AppStore>();
     final name = nameCtrl.text.trim().isEmpty ? 'Student' : nameCtrl.text.trim();
     final g = _goals.firstWhere((x) => x.$1 == selectedGoal);
     final age = role == 'parent' ? 'kid-7-10' : 'adult';
-    context.read<AppStore>().completeOnboarding(name, age, role, goal: (g.$2 / 3).ceil());
+    // The learner's code opens their profile from "Who's using?" next time.
+    final st = s.student;
+    if (st != null) {
+      await showStudentCode(context, StudentAccount.fromJson({...st.toJson(), 'name': name}),
+          title: tr('Your secret code, $name!', '$name, तुम्हारा गुप्त कोड!'));
+      if (!mounted) return;
+    }
+    s.completeOnboarding(name, age, role, goal: (g.$2 / 3).ceil());
   }
 
   Widget _optionCard({required bool selected, required String emoji, required String label,
       required String desc, required VoidCallback onTap, double emojiSize = 34}) {
-    return GestureDetector(
+    return Pressable(
       onTap: () { hapticLight(); onTap(); },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -77,7 +89,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
             decoration: BoxDecoration(shape: BoxShape.circle,
                 border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: 2)),
             child: selected ? Center(child: Container(width: 12, height: 12,
-                decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle))) : null,
+                decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle))) : null,
           ),
         ]),
       ),
@@ -98,7 +110,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
   Widget build(BuildContext context) {
     final progress = step / 3;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(children: [
           if (step > 0)
@@ -106,7 +118,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
               padding: const EdgeInsets.fromLTRB(Sp.md, Sp.sm, Sp.md, 0),
               child: Row(children: [
                 IconButton(onPressed: () => setState(() => step = step - 1),
-                    icon: const Icon(Icons.close, size: 28, color: AppColors.textSecondary)),
+                    icon: Icon(Icons.close, size: 28, color: AppColors.textSecondary)),
                 Expanded(child: ClipRRect(
                   borderRadius: BorderRadius.circular(9999),
                   child: Container(height: 14, color: AppColors.border, alignment: Alignment.centerLeft,
@@ -150,8 +162,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
           const SizedBox(height: Sp.xxl),
           ToyButton(label: 'GET STARTED', size: ToySize.lg, fullWidth: true, onPressed: () => setState(() => step = 1)),
           const SizedBox(height: Sp.md),
-          ToyButton(label: 'I ALREADY HAVE AN ACCOUNT', variant: ToyVariant.outline, fullWidth: true,
-              onPressed: () => setState(() => step = 1)),
+          // A child whose parent already uses HindiMitra pairs this device with a code.
+          ToyButton(label: 'I HAVE A CODE FROM MY PARENT', variant: ToyVariant.outline, fullWidth: true,
+              onPressed: () => openScreen(context, 'PairDevice')),
         ]);
       case 1:
         return Column(children: [
@@ -181,11 +194,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
               hintStyle: Fonts.body(20, color: AppColors.textSecondary, w: FontWeight.w600),
               contentPadding: const EdgeInsets.symmetric(horizontal: Sp.lg, vertical: Sp.md),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(Rad.lg),
-                  borderSide: const BorderSide(color: AppColors.border)),
+                  borderSide: BorderSide(color: AppColors.border)),
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(Rad.lg),
-                  borderSide: const BorderSide(color: AppColors.border)),
+                  borderSide: BorderSide(color: AppColors.border)),
               focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(Rad.lg),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 2)),
+                  borderSide: BorderSide(color: AppColors.primary, width: 2)),
             ),
           ),
           const SizedBox(height: Sp.lg),
