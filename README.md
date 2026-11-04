@@ -19,10 +19,10 @@ HindiMitra (*mitra* = friend) is a Flutter app that teaches the Devanagari scrip
 tracing, quizzes, flashcards, story reading and games. It is a Flutter port of the React Native (Expo) app
 *Hindi Sikho* and keeps the same "Little Hindi" design: cream `#FCF9EE`, marigold `#EE9A4C`, violet `#6E4EDF`,
 solid offset "toy" shadows, and Baloo 2 / Nunito / Tiro Devanagari Hindi fonts. There are five tabs:
-Home · Learn (Write + Read) · Practice · Test · Upcoming. Profile and Rewards open from the Home header.
+Home · Learn (Write + Read) · Practice · Test · Upcoming. The profile menu on Home (tap the avatar) holds the score,
+profile, rewards, leaderboard, switch learner, parent zone, settings and help.
 
-Every launch opens on an India intro (tricolour, Ashoka Chakra, "Made in India · for the world", a few facts about
-Hindi). Settings has nine themes (Sunny Day, Starry Night, Tiranga, Web Hero, Night Guardian, Ocean, Jungle, Space,
+Every launch opens on an India intro (tricolour, Ashoka Chakra, "Made in India", "Developed by VoxCRE"). Settings has nine themes (Sunny Day, Starry Night, Tiranga, Web Hero, Night Guardian, Ocean, Jungle, Space,
 Candy; defined in `lib/theme/themes.dart`), the app language (English and Hindi, more listed as coming soon), and the
 user's name in Hindi with a ⓘ to correct the automatic spelling. All levels are open (`unlockAll` in
 `lib/data/models.dart`).
